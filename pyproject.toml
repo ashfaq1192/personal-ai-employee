@@ -1,0 +1,32 @@
+[project]
+name = "personal-ai-employee"
+version = "0.1.0"
+description = "Personal AI Employee (Digital FTE) — Local-first autonomous AI assistant using Claude Code + Obsidian"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "google-api-python-client>=2.150.0",
+    "google-auth>=2.35.0",
+    "google-auth-oauthlib>=1.2.0",
+    "playwright>=1.49.0",
+    "watchdog>=6.0.0",
+    "httpx>=0.28.0",
+    "tweepy>=4.14.0",
+    "apscheduler>=3.10.0",
+    "mcp>=1.0.0",
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

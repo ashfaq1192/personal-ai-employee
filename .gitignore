@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.egg
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Credentials (NEVER commit)
+*credentials*.json
+*token*.json
+*.key
+*.pem
+
+# WhatsApp session
+whatsapp-session/
+
+# Node.js (PM2, npx tools)
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+
+# UV
+.python-version
+
+# Logs (runtime logs live in vault, not repo)
+*.log
+
+# Test artifacts
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Playwright
+playwright/.cache/

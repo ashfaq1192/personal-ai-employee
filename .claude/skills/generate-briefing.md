@@ -1,0 +1,1 @@
+/mnt/d/projects/hackathon-0/src/skills/generate_briefing.md

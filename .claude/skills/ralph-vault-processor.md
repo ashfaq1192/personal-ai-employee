@@ -1,0 +1,1 @@
+/mnt/d/projects/hackathon-0/src/skills/ralph_vault_processor.md

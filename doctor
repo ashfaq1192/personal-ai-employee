@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+# doctor — Health-check script for Personal AI Employee
+# Exit 0 if no FAIL; exit 1 if any FAIL.
+
+set -euo pipefail
+
+# ── Colors ────────────────────────────────────────────────────────────────────
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+RESET='\033[0m'
+BOLD='\033[1m'
+
+PASS="${GREEN}[PASS]${RESET}"
+WARN="${YELLOW}[WARN]${RESET}"
+FAIL="${RED}[FAIL]${RESET}"
+
+failed=0
+
+pass()  { printf "  $PASS %s\n" "$*"; }
+warn()  { printf "  $WARN %s\n" "$*"; }
+fail()  { printf "  $FAIL %s\n" "$*"; failed=1; }
+
+echo ""
+echo -e "${BOLD}Personal AI Employee — Doctor${RESET}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# ── 1. Python ≥ 3.13 (via uv-managed interpreter) ────────────────────────────
+echo ""
+echo -e "${BOLD}System Dependencies${RESET}"
+
+if command -v uv &>/dev/null; then
+  PY_VER=$(uv run python --version 2>&1 | awk '{print $2}')
+  PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
+  PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
+  if [ "$PY_MAJOR" -ge 3 ] && [ "$PY_MINOR" -ge 13 ]; then
+    pass "Python $PY_VER (uv)"
+  else
+    warn "Python $PY_VER via uv (need ≥ 3.13 — run: uv python install 3.13)"
+  fi
+elif command -v python3 &>/dev/null; then
+  PY_VER=$(python3 --version 2>&1 | awk '{print $2}')
+  PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
+  PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
+  if [ "$PY_MAJOR" -ge 3 ] && [ "$PY_MINOR" -ge 13 ]; then
+    pass "Python $PY_VER"
+  else
+    fail "Python $PY_VER (need ≥ 3.13)"
+  fi
+else
+  fail "python3 not found"
+fi
+
+# ── 2. uv ────────────────────────────────────────────────────────────────────
+if command -v uv &>/dev/null; then
+  UV_VER=$(uv --version 2>&1 | awk '{print $2}')
+  pass "uv $UV_VER"
+else
+  fail "uv not found — install from https://docs.astral.sh/uv/getting-started/installation/"
+fi
+
+# ── 3. Node.js ≥ 20 ──────────────────────────────────────────────────────────
+if command -v node &>/dev/null; then
+  NODE_VER=$(node --version 2>&1 | sed 's/v//')
+  NODE_MAJOR=$(echo "$NODE_VER" | cut -d. -f1)
+  if [ "$NODE_MAJOR" -ge 20 ]; then
+    pass "Node.js v$NODE_VER"
+  else
+    warn "Node.js v$NODE_VER (recommend ≥ 20 for browser MCP)"
+  fi
+else
+  warn "node not found (required for browser MCP server)"
+fi
+
+# ── 4. Claude Code CLI ───────────────────────────────────────────────────────
+if command -v claude &>/dev/null; then
+  CLAUDE_VER=$(claude --version 2>&1 | head -1)
+  pass "Claude Code: $CLAUDE_VER"
+else
+  fail "claude CLI not found — install Claude Code"
+fi
+
+# ── 5. .env file exists ───────────────────────────────────────────────────────
+echo ""
+echo -e "${BOLD}Configuration${RESET}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$SCRIPT_DIR/.env"
+
+if [ -f "$ENV_FILE" ]; then
+  pass ".env file exists"
+else
+  fail ".env file missing — run: cp .env.example .env && fill credentials"
+fi
+
+# ── 6. VAULT_PATH resolves ────────────────────────────────────────────────────
+VAULT_PATH_RAW="${VAULT_PATH:-$HOME/AI_Employee_Vault}"
+VAULT_PATH_RESOLVED="${VAULT_PATH_RAW/#\~/$HOME}"
+
+if [ -d "$VAULT_PATH_RESOLVED" ]; then
+  pass "VAULT_PATH exists: $VAULT_PATH_RESOLVED"
+else
+  fail "VAULT_PATH not found: $VAULT_PATH_RESOLVED — run: python main.py --init-vault"
+fi
+
+# ── 7. Required vault folders ────────────────────────────────────────────────
+echo ""
+echo -e "${BOLD}Vault Structure${RESET}"
+
+REQUIRED_FOLDERS=(Needs_Action Pending_Approval Approved Done Logs)
+for folder in "${REQUIRED_FOLDERS[@]}"; do
+  if [ -d "$VAULT_PATH_RESOLVED/$folder" ]; then
+    pass "/$folder/"
+  else
+    fail "/$folder/ missing in vault"
+  fi
+done
+
+# ── 8. Vault template files ───────────────────────────────────────────────────
+REQUIRED_FILES=(Dashboard.md Company_Handbook.md Business_Goals.md)
+for tpl in "${REQUIRED_FILES[@]}"; do
+  if [ -f "$VAULT_PATH_RESOLVED/$tpl" ]; then
+    pass "$tpl"
+  else
+    warn "$tpl not found in vault (optional — run --init-vault to create)"
+  fi
+done
+
+# ── 9. Python deps installed ─────────────────────────────────────────────────
+echo ""
+echo -e "${BOLD}Python Environment${RESET}"
+
+if uv run python -c "import mcp, watchdog, apscheduler" &>/dev/null 2>&1; then
+  pass "Core Python deps (mcp, watchdog, apscheduler)"
+else
+  fail "Python deps missing — run: uv sync"
+fi
+
+# ── 10. Tests pass ───────────────────────────────────────────────────────────
+echo ""
+echo -e "${BOLD}Test Suite${RESET}"
+
+if uv run pytest tests/ -q --tb=no 2>&1 | grep -qE "passed"; then
+  TEST_RESULT=$(uv run pytest tests/ -q --tb=no 2>&1 | tail -1)
+  pass "Tests: $TEST_RESULT"
+else
+  fail "Tests failing — run: uv run pytest tests/ -v"
+fi
+
+# ── 11. MCP servers importable ───────────────────────────────────────────────
+echo ""
+echo -e "${BOLD}MCP Servers${RESET}"
+
+if uv run python -c "import src.mcp_servers.email_mcp" &>/dev/null 2>&1; then
+  pass "email_mcp importable"
+else
+  fail "email_mcp import failed"
+fi
+
+if uv run python -c "import src.mcp_servers.social_mcp" &>/dev/null 2>&1; then
+  pass "social_mcp importable"
+else
+  fail "social_mcp import failed"
+fi
+
+if uv run python -c "import src.mcp_servers.odoo_mcp" &>/dev/null 2>&1; then
+  pass "odoo_mcp importable"
+else
+  fail "odoo_mcp import failed"
+fi
+
+# ── Summary ───────────────────────────────────────────────────────────────────
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+if [ "$failed" -eq 0 ]; then
+  echo -e "${GREEN}${BOLD}All checks passed.${RESET} System ready."
+  echo ""
+  echo "  Start:  python main.py"
+  echo "  Status: python main.py --status"
+  echo "  Demo:   python main.py --demo"
+  exit 0
+else
+  echo -e "${RED}${BOLD}Some checks FAILED.${RESET} Fix issues above before starting."
+  exit 1
+fi

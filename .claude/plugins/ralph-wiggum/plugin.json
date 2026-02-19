@@ -1,0 +1,20 @@
+{
+  "plugins": [
+    {
+      "name": "ralph-wiggum",
+      "description": "Persistence loop for multi-step task completion",
+      "stop_hook": {
+        "command": "python3",
+        "args": ["/mnt/d/projects/hackathon-0/.claude/plugins/ralph-wiggum/stop_hook.py"],
+        "env": {
+          "VAULT_PATH": "~/AI_Employee_Vault"
+        }
+      },
+      "settings": {
+        "max_iterations": 10,
+        "completion_promise": "TASK_COMPLETE",
+        "check_interval_seconds": 2
+      }
+    }
+  ]
+}

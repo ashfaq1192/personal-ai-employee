@@ -1,0 +1,42 @@
+{
+  "mcpServers": {
+    "email": {
+      "command": "uv",
+      "args": ["run", "python", "src/mcp_servers/email_mcp.py"],
+      "env": {
+        "GMAIL_CREDENTIALS": "${HOME}/.config/ai-employee/gmail_credentials.json",
+        "VAULT_PATH": "${VAULT_PATH}",
+        "DRY_RUN": "${DRY_RUN:-true}",
+        "RATE_LIMIT_EMAILS_PER_HOUR": "10"
+      }
+    },
+    "social": {
+      "command": "uv",
+      "args": ["run", "python", "src/mcp_servers/social_mcp.py"],
+      "env": {
+        "VAULT_PATH": "${VAULT_PATH}",
+        "DRY_RUN": "${DRY_RUN:-true}",
+        "LINKEDIN_ACCESS_TOKEN": "${LINKEDIN_ACCESS_TOKEN}",
+        "META_ACCESS_TOKEN": "${META_ACCESS_TOKEN}",
+        "TWITTER_BEARER_TOKEN": "${TWITTER_BEARER_TOKEN}"
+      }
+    },
+    "odoo": {
+      "command": "uv",
+      "args": ["run", "python", "src/mcp_servers/odoo_mcp.py"],
+      "env": {
+        "ODOO_URL": "${ODOO_URL}",
+        "ODOO_DB": "${ODOO_DB}",
+        "ODOO_USERNAME": "${ODOO_USERNAME}",
+        "ODOO_PASSWORD": "${ODOO_PASSWORD}"
+      }
+    },
+    "browser": {
+      "command": "npx",
+      "args": ["@anthropic/browser-mcp"],
+      "env": {
+        "HEADLESS": "true"
+      }
+    }
+  }
+}
