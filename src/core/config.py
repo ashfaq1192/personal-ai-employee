@@ -42,13 +42,26 @@ class Config:
             )
         ).expanduser()
 
-        # WhatsApp
+        # WhatsApp (Playwright session — legacy Path A)
         self.whatsapp_session_path: Path = Path(
             os.environ.get(
                 "WHATSAPP_SESSION_PATH",
                 "~/.config/ai-employee/whatsapp-session",
             )
         ).expanduser()
+
+        # WhatsApp Business API (Path B — Meta Cloud API)
+        self.whatsapp_phone_number_id: str = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
+        self.whatsapp_business_account_id: str = os.environ.get("WHATSAPP_BUSINESS_ACCOUNT_ID", "")
+        self.whatsapp_webhook_verify_token: str = os.environ.get(
+            "WHATSAPP_WEBHOOK_VERIFY_TOKEN", "ai_employee_verify"
+        )
+        self.whatsapp_access_token: str = os.environ.get(
+            "WHATSAPP_ACCESS_TOKEN", ""
+        ) or self.meta_access_token
+        self.rate_limit_whatsapp: int = int(
+            os.environ.get("RATE_LIMIT_WHATSAPP_PER_HOUR", "20")
+        )
 
         # Social media
         self.linkedin_access_token: str = os.environ.get("LINKEDIN_ACCESS_TOKEN", "")

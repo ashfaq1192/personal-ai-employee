@@ -211,24 +211,24 @@ def api_email_content(filename: str) -> dict:
 
 
 def api_whatsapp_scan(_body: dict = {}) -> dict:
-    """Trigger one WhatsApp scan cycle."""
-    try:
-        from src.watchers.whatsapp_watcher import WhatsAppWatcher
-        watcher = WhatsAppWatcher(config)
-        items = watcher.check_for_updates()
-        created = []
-        for item in items:
-            p = watcher.create_action_file(item)
-            created.append(p.name)
-        if watcher._browser:
-            try:
-                watcher._browser.close()
-            except Exception:
-                pass
-        audit.log("whatsapp_scan", "web_dashboard", "Needs_Action", parameters={"new": len(items)})
-        return {"status": "ok", "new_messages": len(created), "files": created}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    """Return current WhatsApp webhook status (Path B — no Playwright)."""
+    needs_action = vault / "Needs_Action"
+    wa_files = (
+        [f.name for f in sorted(needs_action.iterdir(), key=lambda x: -x.stat().st_mtime)
+         if f.is_file() and f.name.startswith("WHATSAPP_")]
+        if needs_action.exists() else []
+    )
+    phone_id = config.whatsapp_phone_number_id
+    audit.log("whatsapp_scan", "web_dashboard", "Needs_Action", parameters={"pending": len(wa_files)})
+    return {
+        "status": "ok",
+        "mode": "business_api",
+        "phone_number_id": phone_id,
+        "webhook_port": 8081,
+        "pending_messages": len(wa_files),
+        "files": wa_files[:20],
+        "note": "Inbound messages arrive via POST /whatsapp/webhook (port 8081)",
+    }
 
 
 def api_whatsapp_content(filename: str) -> dict:
