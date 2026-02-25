@@ -146,7 +146,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             if err:
                 return [TextContent(type="text", text=err)]
 
-            client = InstagramClient(config.meta_access_token, dry_run=config.dry_run)
+            client = InstagramClient(config.meta_access_token, config.facebook_page_id, dry_run=config.dry_run)
             result = client.post(arguments["ig_user_id"], arguments["image_url"], arguments["caption"])
             audit.log(action_type="social_post", actor="social_mcp", target="instagram", parameters={"caption": arguments["caption"][:100]}, result="success")
             return [TextContent(type="text", text=f"Instagram: {json.dumps(result)}")]

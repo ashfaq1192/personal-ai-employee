@@ -199,7 +199,7 @@ def test_facebook_dry():
 @test("Instagram dry-run post")
 def test_instagram_dry():
     from src.mcp_servers.instagram_client import InstagramClient
-    c = InstagramClient("fake_token", dry_run=True)
+    c = InstagramClient("fake_token", "fake_page_id", dry_run=True)
     result = c.post("123456", "https://example.com/img.jpg", "Test caption")
     assert result["status"] == "dry_run"
     return f"dry_run result: {result}"
