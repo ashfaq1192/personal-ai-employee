@@ -6,6 +6,9 @@ import logging
 import time
 from typing import Any
 
+_CONTAINER_POLL_INTERVAL = 3  # seconds between status checks
+_CONTAINER_MAX_WAIT = 60      # seconds before giving up
+
 import httpx
 
 from src.core.retry import with_retry
@@ -47,8 +50,21 @@ class InstagramClient:
             resp.raise_for_status()
             container_id = resp.json()["id"]
 
-            # Wait for processing
-            time.sleep(3)
+            # Poll until container is FINISHED (replaces fragile fixed sleep)
+            waited = 0
+            while waited < _CONTAINER_MAX_WAIT:
+                status_resp = client.get(
+                    f"{GRAPH_API_BASE}/{container_id}",
+                    params={"fields": "status_code", "access_token": self._token},
+                )
+                if status_resp.is_success:
+                    status_code = status_resp.json().get("status_code", "")
+                    if status_code == "FINISHED":
+                        break
+                    if status_code == "ERROR":
+                        raise RuntimeError("Instagram media container processing failed")
+                time.sleep(_CONTAINER_POLL_INTERVAL)
+                waited += _CONTAINER_POLL_INTERVAL
 
             # Step 2: Publish
             resp = client.post(

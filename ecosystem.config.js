@@ -88,5 +88,23 @@ module.exports = {
       error_file: "./logs/web-dashboard-error.log",
       out_file: "./logs/web-dashboard-out.log",
     },
+    // ── Platinum: Cloud Agent (run this app only on the GCP VM) ──────────────
+    {
+      name: "ai-employee-cloud-agent",
+      script: "uv",
+      args: "run python src/cloud/agent/cloud_agent.py",
+      cwd: __dirname,
+      // AGENT_NAME distinguishes cloud from local in claim-by-move rule
+      env: { ...BASE_ENV, AGENT_NAME: "cloud", DRY_RUN: "true" },
+      env_development: { ...BASE_ENV_DEV, AGENT_NAME: "cloud" },
+      ...RESTART_POLICY,
+      ...LOG_OPTS,
+      error_file: "./logs/cloud-agent-error.log",
+      out_file: "./logs/cloud-agent-out.log",
+    },
+    // ── Platinum: Vault Sync (cron-driven, managed separately) ───────────────
+    // vault_sync.sh is run via cron every 2 minutes — not via PM2.
+    // To set up: crontab -e → add:
+    //   */2 * * * * /path/to/repo/src/cloud/sync/vault_sync.sh >> /tmp/vault-sync.log 2>&1
   ],
 };

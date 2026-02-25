@@ -53,6 +53,8 @@ class Config:
         # Social media
         self.linkedin_access_token: str = os.environ.get("LINKEDIN_ACCESS_TOKEN", "")
         self.meta_access_token: str = os.environ.get("META_ACCESS_TOKEN", "")
+        self.facebook_page_id: str = os.environ.get("FACEBOOK_PAGE_ID", "")
+        self.ig_user_id: str = os.environ.get("INSTAGRAM_USER_ID", "")
         self.twitter_bearer_token: str = os.environ.get("TWITTER_BEARER_TOKEN", "")
         self.twitter_api_key: str = os.environ.get("TWITTER_API_KEY", "")
         self.twitter_api_secret: str = os.environ.get("TWITTER_API_SECRET", "")

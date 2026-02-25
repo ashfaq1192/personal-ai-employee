@@ -1,0 +1,66 @@
+# ============================================================================
+# Odoo 17 Community Edition — Local development setup
+# ============================================================================
+# Usage:
+#   docker compose up -d        # start Odoo + PostgreSQL
+#   docker compose down         # stop
+#   docker compose logs -f odoo # view logs
+#
+# Odoo UI: http://localhost:8069
+# Default credentials: admin / admin  (set by ODOO_PASSWORD below)
+#
+# Note: Odoo 19 is not yet on Docker Hub — Odoo 17 is the latest stable
+# Community image. The JSON-RPC API used by odoo_client.py is identical.
+# For production (Platinum), use install-odoo.sh on the GCP VM with Odoo 19.
+# ============================================================================
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ai-employee-postgres
+    environment:
+      POSTGRES_DB: odoo
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  odoo:
+    image: odoo:17
+    container_name: ai-employee-odoo
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8069:8069"
+    environment:
+      HOST: db
+      USER: odoo
+      PASSWORD: odoo
+    volumes:
+      - odoo_data:/var/lib/odoo
+      - ./docker/odoo/addons:/mnt/extra-addons:ro
+    command: >
+      odoo
+      --db_host=db
+      --db_user=odoo
+      --db_password=odoo
+      --database=odoo
+      --without-demo=all
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8069/web/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_data:
+  odoo_data:

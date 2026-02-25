@@ -187,7 +187,85 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 return [TextContent(type="text", text="[DEV_MODE] Financial summary not available")]
 
             period = arguments["period"]
-            return [TextContent(type="text", text=f"Financial summary for {period}: Feature requires live Odoo connection.")]
+            from datetime import date, timedelta
+            today = date.today()
+            if period == "week":
+                date_from = today - timedelta(days=7)
+            elif period == "month":
+                date_from = today.replace(day=1)
+            elif period == "quarter":
+                q_start_month = ((today.month - 1) // 3) * 3 + 1
+                date_from = today.replace(month=q_start_month, day=1)
+            else:  # year
+                date_from = today.replace(month=1, day=1)
+
+            date_from_str = date_from.isoformat()
+            date_to_str = today.isoformat()
+
+            client = _get_client()
+
+            # Revenue: posted customer invoices
+            revenue_records = client.search_read(
+                "account.move",
+                [
+                    ["move_type", "in", ["out_invoice", "out_refund"]],
+                    ["state", "=", "posted"],
+                    ["invoice_date", ">=", date_from_str],
+                    ["invoice_date", "<=", date_to_str],
+                ],
+                ["amount_total", "move_type"],
+            )
+            revenue = sum(
+                r["amount_total"] * (-1 if r["move_type"] == "out_refund" else 1)
+                for r in revenue_records
+            )
+
+            # Expenses: posted vendor bills
+            expense_records = client.search_read(
+                "account.move",
+                [
+                    ["move_type", "in", ["in_invoice", "in_refund"]],
+                    ["state", "=", "posted"],
+                    ["invoice_date", ">=", date_from_str],
+                    ["invoice_date", "<=", date_to_str],
+                ],
+                ["amount_total", "move_type"],
+            )
+            expenses = sum(
+                r["amount_total"] * (-1 if r["move_type"] == "in_refund" else 1)
+                for r in expense_records
+            )
+
+            # Outstanding receivables
+            outstanding_records = client.search_read(
+                "account.move",
+                [
+                    ["move_type", "in", ["out_invoice"]],
+                    ["state", "=", "posted"],
+                    ["payment_state", "!=", "paid"],
+                ],
+                ["amount_residual"],
+            )
+            outstanding = sum(r["amount_residual"] for r in outstanding_records)
+
+            summary = {
+                "period": period,
+                "date_from": date_from_str,
+                "date_to": date_to_str,
+                "revenue": round(revenue, 2),
+                "expenses": round(expenses, 2),
+                "net_profit": round(revenue - expenses, 2),
+                "outstanding_receivables": round(outstanding, 2),
+                "invoice_count": len(revenue_records),
+                "expense_count": len(expense_records),
+            }
+            audit.log(
+                action_type="financial_summary",
+                actor="odoo_mcp",
+                target=period,
+                result="success",
+            )
+            return [TextContent(type="text", text=json.dumps(summary, indent=2))]
 
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]

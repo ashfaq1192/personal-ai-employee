@@ -107,3 +107,24 @@ class OdooClient:
             "object", "execute_kw",
             [self._db, uid, self._password, model, "write", [ids, values]],
         )
+
+    def replay_pending(self) -> list[dict[str, Any]]:
+        """Replay queued actions from /Accounting/pending/ when Odoo is back online.
+
+        Returns list of results for each replayed action.
+        """
+        if not self._pending_dir or not self._pending_dir.exists():
+            return []
+
+        results = []
+        for pending_file in sorted(self._pending_dir.glob("odoo_pending_*.json")):
+            try:
+                data = json.loads(pending_file.read_text(encoding="utf-8"))
+                result = self._jsonrpc(data["service"], data["method"], data["args"])
+                results.append({"file": pending_file.name, "status": "replayed", "result": result})
+                pending_file.unlink()
+                log.info("Replayed pending Odoo action from %s", pending_file.name)
+            except Exception as exc:
+                results.append({"file": pending_file.name, "status": "failed", "error": str(exc)})
+                log.warning("Failed to replay %s: %s", pending_file.name, exc)
+        return results

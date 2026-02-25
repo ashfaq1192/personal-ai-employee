@@ -168,7 +168,20 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         elif name == "get_social_metrics":
             platform = arguments["platform"]
             days = arguments.get("days", 7)
-            return [TextContent(type="text", text=f"Metrics for {platform} (last {days} days): No data available yet. Connect platform API keys to enable.")]
+            from src.mcp_servers.social_metrics import collect_platform_metrics
+            metrics = collect_platform_metrics(
+                platform,
+                days,
+                meta_access_token=config.meta_access_token,
+                facebook_page_id=config.facebook_page_id,
+                ig_user_id=config.ig_user_id,
+                twitter_api_key=config.twitter_api_key,
+                twitter_api_secret=config.twitter_api_secret,
+                twitter_access_token=config.twitter_access_token,
+                twitter_access_secret=config.twitter_access_secret,
+                linkedin_access_token=config.linkedin_access_token,
+            )
+            return [TextContent(type="text", text=json.dumps({"platform": platform, "days": days, "metrics": metrics}, indent=2))]
 
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
