@@ -94,3 +94,15 @@ class FileSystemWatcher(BaseWatcher):
         super().stop()
         self._observer.stop()
         self._observer.join(timeout=5)
+
+
+if __name__ == "__main__":
+    import sys
+    sys.path.insert(0, ".")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    )
+    from src.core.config import Config
+    watcher = FileSystemWatcher(Config())
+    watcher.run()

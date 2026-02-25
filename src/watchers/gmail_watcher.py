@@ -204,3 +204,15 @@ class GmailWatcher(BaseWatcher):
         md_path.write_text(md_content, encoding="utf-8")
         self._processed_ids.add(msg_id)
         return md_path
+
+
+if __name__ == "__main__":
+    import sys
+    sys.path.insert(0, ".")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    )
+    from src.core.config import Config
+    watcher = GmailWatcher(Config())
+    watcher.run()

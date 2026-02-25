@@ -119,11 +119,24 @@ class WhatsAppWatcher(BaseWatcher):
             for chat in unread_chats:
                 try:
                     chat.click()
-                    page.wait_for_timeout(1000)
+                    page.wait_for_timeout(2000)  # wait for header to fully render
 
-                    # Get contact name
-                    header = page.query_selector("header span[title]")
-                    contact = header.get_attribute("title") if header else "unknown"
+                    # Get contact name — try multiple selectors, skip status strings
+                    contact = "unknown"
+                    _skip = {"online", "typing...", "recording...", ""}
+                    for _sel in [
+                        "#main header span[title]",
+                        "header [data-testid='conversation-header'] span[title]",
+                        "header span[title]",
+                    ]:
+                        _els = page.query_selector_all(_sel)
+                        for _el in _els:
+                            _title = (_el.get_attribute("title") or "").strip()
+                            if _title.lower() not in _skip:
+                                contact = _title
+                                break
+                        if contact != "unknown":
+                            break
 
                     # Get recent messages
                     msg_elements = page.query_selector_all("[data-pre-plain-text]")
@@ -184,3 +197,15 @@ class WhatsAppWatcher(BaseWatcher):
                 self._browser.close()
             except Exception:
                 pass
+
+
+if __name__ == "__main__":
+    import sys
+    sys.path.insert(0, ".")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    )
+    from src.core.config import Config
+    watcher = WhatsAppWatcher(Config())
+    watcher.run()

@@ -39,7 +39,7 @@ module.exports = {
     {
       name: "ai-employee-filesystem-watcher",
       script: "uv",
-      args: "run python src/watchers/filesystem_watcher.py",
+      args: "run python -m src.watchers.filesystem_watcher",
       cwd: __dirname,
       env: BASE_ENV,
       env_development: BASE_ENV_DEV,
@@ -51,7 +51,7 @@ module.exports = {
     {
       name: "ai-employee-gmail-watcher",
       script: "uv",
-      args: "run python src/watchers/gmail_watcher.py",
+      args: "run python -m src.watchers.gmail_watcher",
       cwd: __dirname,
       env: BASE_ENV,
       env_development: BASE_ENV_DEV,
@@ -61,6 +61,18 @@ module.exports = {
       out_file: "./logs/gmail-watcher-out.log",
     },
     {
+      name: "ai-employee-whatsapp-watcher",
+      script: "uv",
+      args: "run python -m src.watchers.whatsapp_watcher",
+      cwd: __dirname,
+      env: { ...BASE_ENV, DISPLAY: ":0" },
+      env_development: BASE_ENV_DEV,
+      ...RESTART_POLICY,
+      ...LOG_OPTS,
+      error_file: "./logs/whatsapp-watcher-error.log",
+      out_file: "./logs/whatsapp-watcher-out.log",
+    },
+    {
       name: "ai-employee-web-dashboard",
       script: "uv",
       args: "run python src/cli/web_dashboard.py",
@@ -68,6 +80,7 @@ module.exports = {
       env: {
         ...BASE_ENV,
         PORT: process.env.DASHBOARD_PORT || "8080",
+        DISPLAY: ":0",
       },
       env_development: BASE_ENV_DEV,
       ...RESTART_POLICY,

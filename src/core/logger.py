@@ -73,11 +73,18 @@ class AuditLogger:
     def get_recent(self, count: int = 10) -> list[dict[str, Any]]:
         """Return the most recent N log entries across all log files."""
         all_entries: list[dict[str, Any]] = []
-        log_files = sorted(self.logs_dir.glob("*.json"), reverse=True)
+        # Only read files that match date format YYYY-MM-DD.json
+        import re as _re
+        log_files = sorted(
+            (f for f in self.logs_dir.glob("*.json")
+             if _re.match(r"\d{4}-\d{2}-\d{2}\.json$", f.name)),
+            reverse=True,
+        )
         for log_file in log_files:
             try:
                 entries = json.loads(log_file.read_text(encoding="utf-8"))
-                all_entries.extend(entries)
+                # Only include dict entries (guard against malformed files)
+                all_entries.extend(e for e in entries if isinstance(e, dict))
             except (json.JSONDecodeError, ValueError):
                 continue
             if len(all_entries) >= count:
