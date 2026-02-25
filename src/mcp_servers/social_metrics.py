@@ -14,84 +14,126 @@ log = logging.getLogger(__name__)
 GRAPH_BASE = "https://graph.facebook.com/v20.0"
 
 
+# ─── Token helpers ─────────────────────────────────────────────────────────────
+
+def _get_page_token(user_token: str, page_id: str) -> str:
+    """Exchange user token for a Page Access Token."""
+    with httpx.Client(timeout=15) as client:
+        resp = client.get(
+            f"{GRAPH_BASE}/{page_id}",
+            params={"fields": "access_token", "access_token": user_token},
+        )
+        resp.raise_for_status()
+        return resp.json()["access_token"]
+
+
 # ─── Per-platform metric fetchers ─────────────────────────────────────────────
 
 def _fetch_facebook_metrics(access_token: str, page_id: str, days: int) -> dict[str, Any]:
-    """Fetch Page Insights from Facebook Graph API."""
-    try:
-        with httpx.Client(timeout=15) as client:
-            resp = client.get(
-                f"{GRAPH_BASE}/{page_id}/insights",
-                params={
-                    "metric": "page_impressions,page_engaged_users,page_post_engagements,page_fan_adds",
-                    "period": "week" if days <= 7 else "month",
-                    "access_token": access_token,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json().get("data", [])
-            metrics: dict[str, Any] = {"posts": 0}
-            for item in data:
-                name = item.get("name", "")
-                values = item.get("values", [{}])
-                value = values[-1].get("value", 0) if values else 0
-                if name == "page_impressions":
-                    metrics["impressions"] = value
-                elif name == "page_engaged_users":
-                    metrics["engaged_users"] = value
-                elif name == "page_post_engagements":
-                    metrics["reactions"] = value
-                elif name == "page_fan_adds":
-                    metrics["new_followers"] = value
+    """Fetch Page metrics from Facebook Graph API.
 
-            # Count recent posts
+    Uses Page token (required for /posts and page fields).
+    Falls back to basic page fields when Insights API is unavailable
+    (requires read_insights scope, not always granted).
+    """
+    try:
+        page_token = _get_page_token(access_token, page_id)
+        metrics: dict[str, Any] = {}
+
+        with httpx.Client(timeout=15) as client:
+            # Basic page stats (always available with pages_read_engagement)
+            page_resp = client.get(
+                f"{GRAPH_BASE}/{page_id}",
+                params={"fields": "fan_count,followers_count", "access_token": page_token},
+            )
+            if page_resp.is_success:
+                data = page_resp.json()
+                metrics["followers"] = data.get("followers_count", data.get("fan_count", 0))
+
+            # Count recent posts (always available)
             posts_resp = client.get(
                 f"{GRAPH_BASE}/{page_id}/posts",
-                params={"limit": 100, "since": _days_ago_ts(days), "access_token": access_token},
+                params={"limit": 100, "since": _days_ago_ts(days), "access_token": page_token},
             )
             if posts_resp.is_success:
                 metrics["posts"] = len(posts_resp.json().get("data", []))
-            return metrics
+
+            # Try Insights (requires read_insights scope — gracefully skip if unavailable)
+            insights_resp = client.get(
+                f"{GRAPH_BASE}/{page_id}/insights",
+                params={
+                    "metric": "page_post_engagements",
+                    "period": "day",
+                    "since": _days_ago_ts(days),
+                    "until": _days_ago_ts(0),
+                    "access_token": page_token,
+                },
+            )
+            if insights_resp.is_success:
+                for item in insights_resp.json().get("data", []):
+                    name = item.get("name", "")
+                    total = sum(v.get("value", 0) for v in item.get("values", []))
+                    if name == "page_post_engagements":
+                        metrics["engagements"] = total
+
+        return metrics
     except Exception as exc:
         log.warning("Facebook metrics error: %s", exc)
         return {"error": str(exc)}
 
 
-def _fetch_instagram_metrics(access_token: str, ig_user_id: str, days: int) -> dict[str, Any]:
-    """Fetch Instagram Business Account insights."""
-    try:
-        period = "day"
-        with httpx.Client(timeout=15) as client:
-            resp = client.get(
-                f"{GRAPH_BASE}/{ig_user_id}/insights",
-                params={
-                    "metric": "impressions,reach,profile_views,follower_count",
-                    "period": period,
-                    "since": _days_ago_ts(days),
-                    "until": _days_ago_ts(0),
-                    "access_token": access_token,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json().get("data", [])
-            metrics: dict[str, Any] = {}
-            for item in data:
-                name = item.get("name", "")
-                total = sum(v.get("value", 0) for v in item.get("values", []))
-                metrics[name] = total
+def _fetch_instagram_metrics(access_token: str, ig_user_id: str, days: int, page_id: str = "") -> dict[str, Any]:
+    """Fetch Instagram Business Account metrics.
 
-            # Count recent media
+    Uses Page token (required for IG Business API).
+    Falls back to basic account fields when Insights API is unavailable
+    (requires instagram_manage_insights scope, not always granted).
+    """
+    try:
+        if not page_id:
+            token = access_token  # best-effort with user token
+        else:
+            token = _get_page_token(access_token, page_id)
+
+        metrics: dict[str, Any] = {}
+
+        with httpx.Client(timeout=15) as client:
+            # Basic account stats (always available with instagram_basic)
+            acct_resp = client.get(
+                f"{GRAPH_BASE}/{ig_user_id}",
+                params={"fields": "followers_count,media_count", "access_token": token},
+            )
+            if acct_resp.is_success:
+                data = acct_resp.json()
+                metrics["followers"] = data.get("followers_count", 0)
+                metrics["total_media"] = data.get("media_count", 0)
+
+            # Count recent media (always available with instagram_basic)
             media_resp = client.get(
                 f"{GRAPH_BASE}/{ig_user_id}/media",
-                params={
-                    "fields": "id,timestamp",
-                    "since": _days_ago_ts(days),
-                    "access_token": access_token,
-                },
+                params={"fields": "id,timestamp", "since": _days_ago_ts(days), "access_token": token},
             )
             if media_resp.is_success:
                 metrics["posts"] = len(media_resp.json().get("data", []))
-            return metrics
+
+            # Try Insights (requires instagram_manage_insights — gracefully skip if unavailable)
+            insights_resp = client.get(
+                f"{GRAPH_BASE}/{ig_user_id}/insights",
+                params={
+                    "metric": "impressions,reach",
+                    "period": "day",
+                    "since": _days_ago_ts(days),
+                    "until": _days_ago_ts(0),
+                    "access_token": token,
+                },
+            )
+            if insights_resp.is_success:
+                for item in insights_resp.json().get("data", []):
+                    name = item.get("name", "")
+                    total = sum(v.get("value", 0) for v in item.get("values", []))
+                    metrics[name] = total
+
+        return metrics
     except Exception as exc:
         log.warning("Instagram metrics error: %s", exc)
         return {"error": str(exc)}
@@ -226,7 +268,7 @@ def collect_platform_metrics(
     if platform == "instagram":
         if not meta_access_token or not ig_user_id:
             return {"error": "META_ACCESS_TOKEN and IG_USER_ID required"}
-        return _fetch_instagram_metrics(meta_access_token, ig_user_id, days)
+        return _fetch_instagram_metrics(meta_access_token, ig_user_id, days, page_id=facebook_page_id)
 
     if platform == "twitter":
         if not all([twitter_api_key, twitter_api_secret, twitter_access_token, twitter_access_secret]):
