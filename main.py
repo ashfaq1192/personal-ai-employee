@@ -42,6 +42,23 @@ def main() -> None:
         action="store_true",
         help="Run end-to-end demo scenario",
     )
+    parser.add_argument(
+        "--briefing",
+        action="store_true",
+        help="Generate the Monday Morning CEO Briefing now",
+    )
+    parser.add_argument(
+        "--briefing-date",
+        type=str,
+        default=None,
+        metavar="YYYY-MM-DD",
+        help="Target date for the briefing (default: today)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print briefing without writing to vault (use with --briefing)",
+    )
 
     args = parser.parse_args()
 
@@ -53,6 +70,13 @@ def main() -> None:
         sys.exit(_run(["uv", "run", "python", "src/cli/status.py"]))
     elif args.demo:
         sys.exit(_run(["uv", "run", "python", "scripts/demo_e2e.py"]))
+    elif args.briefing:
+        cmd = ["uv", "run", "python", "scripts/generate_ceo_briefing.py"]
+        if args.briefing_date:
+            cmd += ["--date", args.briefing_date]
+        if args.dry_run:
+            cmd += ["--dry-run"]
+        sys.exit(_run(cmd))
     else:
         # Default: start the orchestrator
         sys.exit(_run(["uv", "run", "python", "src/orchestrator/orchestrator.py"]))

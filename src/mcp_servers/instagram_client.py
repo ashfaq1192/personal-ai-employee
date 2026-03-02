@@ -51,7 +51,11 @@ class InstagramClient:
             log.info("[DRY_RUN] Would post to Instagram %s: %s", ig_user_id, caption[:80])
             return {"status": "dry_run", "ig_user_id": ig_user_id}
 
-        page_token = self._get_page_token()
+        try:
+            page_token = self._get_page_token()
+        except Exception:
+            log.warning("Page token exchange failed — using user token directly")
+            page_token = self._user_token
         with httpx.Client() as client:
             # Step 1: Create media container
             resp = client.post(

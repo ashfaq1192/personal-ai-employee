@@ -74,16 +74,19 @@ The Personal AI Employee (Digital FTE) implementation is **complete across all f
 | Facebook integration | ✅ | `src/mcp_servers/facebook_client.py` |
 | Instagram integration | ✅ | `src/mcp_servers/instagram_client.py` |
 | Twitter/X integration | ✅ | `src/mcp_servers/twitter_client.py` |
-| Weekly CEO Briefing | ✅ | `src/skills/generate_briefing.md` |
-| Ralph Wiggum loop | ✅ | `src/orchestrator/ralph_integration.py` |
+| Weekly CEO Briefing | ✅ | `scripts/generate_ceo_briefing.py` + `src/skills/generate_briefing.md` |
+| Ralph Wiggum loop | ✅ | `src/orchestrator/ralph_integration.py` + `.claude/settings.json` |
 | Error recovery | ✅ | `src/core/retry.py` + `src/orchestrator/health_monitor.py` |
 | Comprehensive audit logging | ✅ | `src/core/logger.py` |
-| Documentation | ✅ | This file + README.md |
+| Architecture docs | ✅ | `docs/ARCHITECTURE.md` |
 
 **Files:**
 - `src/mcp_servers/odoo_mcp.py` - Odoo invoice creation, search, financial summary
 - `src/mcp_servers/odoo_client.py` - Odoo JSON-RPC client for v19+
 - `src/orchestrator/ralph_integration.py` - Ralph Wiggum persistence loop
+- `.claude/settings.json` - Stop hook registration (Ralph Wiggum)
+- `.claude/plugins/ralph-wiggum/stop_hook.py` - Stop hook implementation
+- `scripts/generate_ceo_briefing.py` - Standalone CEO briefing generator
 - `src/orchestrator/health_monitor.py` - Process health monitoring
 - `src/orchestrator/claim_manager.py` - Multi-agent claim-by-move coordination
 - `src/orchestrator/dashboard_updater.py` - Real-time dashboard updates

@@ -42,7 +42,7 @@ class ApprovalWatcher:
         self,
         vault_path: Path,
         *,
-        action_dispatcher: Callable[[dict[str, Any]], None] | None = None,
+        action_dispatcher: Callable[[Path, dict[str, Any]], None] | None = None,
     ) -> None:
         self.vault_path = vault_path
         self.approval_mgr = ApprovalManager(vault_path)
@@ -79,7 +79,7 @@ class ApprovalWatcher:
             # Dispatch the action
             if self._action_dispatcher:
                 try:
-                    self._action_dispatcher(fm)
+                    self._action_dispatcher(path, fm)
                     # Ensure all values are JSON-serializable (YAML can parse datetime objects)
                     safe_params = {k: str(v) for k, v in fm.items()}
                     self.audit.log(

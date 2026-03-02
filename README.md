@@ -6,6 +6,14 @@ An autonomous, local-first AI assistant that handles email, social media, invoic
 
 > **Status:** All 89 tests passing | All 4 tiers implemented | Production-ready
 
+---
+
+## Demo Video
+
+[![Personal AI Employee — Demo](https://img.youtube.com/vi/C_QixMAACxs/maxresdefault.jpg)](https://youtu.be/C_QixMAACxs)
+
+> Click the thumbnail above to watch the full demo on YouTube.
+
 ## Prerequisites
 
 | Dependency | Version | Install |
@@ -22,26 +30,19 @@ An autonomous, local-first AI assistant that handles email, social media, invoic
 
 ```bash
 # 1. Clone and install
-git clone <repo-url>
+git clone https://github.com/ashfaq-polit/hackathon-0.git
 cd hackathon-0
 uv sync
 
-# 2. Run health check (verify all dependencies)
-./doctor
-
-# 3. Configure credentials
+# 2. Configure credentials
 cp .env.example .env
 # Edit .env with your API keys (see docs/setup-gmail.md for Gmail OAuth)
 
-# 4. Initialize the Obsidian vault
+# 3. Initialize the Obsidian vault
 uv run python main.py --init-vault
 
-# 5. Start in development mode (dry-run, no real API calls)
-uv run python main.py
-
-# 6. Or start all services in production with PM2
-pm2 start ecosystem.config.js
-pm2 save
+# 4. Start the web dashboard (runs on http://localhost:8080)
+uv run python main.py --dashboard
 ```
 
 ---
@@ -67,17 +68,22 @@ pm2 save
                      └──────────────┘
 ```
 
+Full architecture: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**
+
 ---
 
 ## CLI Reference
 
 ```bash
-python main.py                  # Start orchestrator (default)
-python main.py --init-vault     # Create vault folders and templates
-python main.py --status         # Show vault and agent status
-python main.py --dashboard      # Start web dashboard (port 8080)
-python main.py --demo           # Run end-to-end demo scenario
-python main.py --help           # Show all commands
+python main.py                           # Start orchestrator (default)
+python main.py --init-vault              # Create vault folders and templates
+python main.py --status                  # Show vault and agent status
+python main.py --dashboard               # Start web dashboard (port 8080)
+python main.py --demo                    # Run end-to-end demo scenario
+python main.py --briefing                # Generate CEO Monday Briefing now
+python main.py --briefing --dry-run      # Preview briefing without writing
+python main.py --briefing-date 2026-03-03  # Briefing for a specific date
+python main.py --help                    # Show all commands
 ```
 
 ---
@@ -141,11 +147,6 @@ uv run pytest tests/ -v
 
 ---
 
-## Demo Video
-
-*[Demo video link — TBD]*
-
----
 
 ## Security
 

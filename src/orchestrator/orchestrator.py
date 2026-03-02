@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import signal
 import subprocess
 import sys
@@ -54,19 +55,107 @@ class Orchestrator:
         self._observer = Observer()
         self._running = False
 
-    def _dispatch_action(self, action_params: dict) -> None:
+    def _dispatch_action(self, path: Path, action_params: dict) -> None:
         """Dispatch an approved action to the appropriate MCP server."""
         action = action_params.get("action", "")
         log.info("Dispatching approved action: %s", action)
+
+        # Extract body text from the approval file (## Reply Body section)
+        body_text = ""
+        try:
+            raw = path.read_text(encoding="utf-8", errors="replace")
+            m = re.search(r"## Reply Body\s*\n\n([\s\S]+)", raw)
+            body_text = m.group(1).strip() if m else ""
+        except Exception:
+            pass
+
+        if self.config.dev_mode:
+            log.info("[DEV_MODE] Skipping real dispatch for action=%s", action)
+            return
+
+        try:
+            if action in ("email_send", "send_email"):
+                from src.mcp_servers.gmail_service import GmailService
+                svc = GmailService(self.config.gmail_credentials_path)
+                svc.send_email(
+                    to=action_params.get("recipient", action_params.get("to", "")),
+                    subject=action_params.get("subject", "Re: Your message"),
+                    body=body_text or action_params.get("body", "(no body)"),
+                )
+
+            elif action in ("whatsapp_reply", "whatsapp_send"):
+                from src.mcp_servers.whatsapp_client import WhatsAppClient
+                client = WhatsAppClient(self.config)
+                client.send_message(
+                    to=action_params.get("to", action_params.get("recipient", "")),
+                    body=body_text or action_params.get("body", ""),
+                )
+
+            elif action in ("linkedin_post", "social_post"):
+                from src.mcp_servers.linkedin_client import LinkedInClient
+                client = LinkedInClient(self.config)
+                client.post(text=body_text or action_params.get("text", ""))
+
+            elif action == "facebook_post":
+                from src.mcp_servers.facebook_client import FacebookClient
+                client = FacebookClient(self.config)
+                client.post_to_page(
+                    page_id=self.config.facebook_page_id,
+                    message=body_text or action_params.get("text", ""),
+                )
+
+            elif action == "instagram_post":
+                from src.mcp_servers.instagram_client import InstagramClient
+                client = InstagramClient(self.config)
+                client.post(
+                    ig_user_id=self.config.instagram_user_id,
+                    image_url=action_params.get("image_url", ""),
+                    caption=body_text or action_params.get("caption", ""),
+                )
+
+            elif action == "twitter_post":
+                from src.mcp_servers.twitter_client import TwitterClient
+                client = TwitterClient(self.config)
+                client.post(text=body_text or action_params.get("text", ""))
+
+            elif action in ("invoice", "create_invoice"):
+                from src.mcp_servers.odoo_client import OdooClient
+                client = OdooClient(self.config)
+                client.create_invoice(
+                    partner_name=action_params.get("recipient", ""),
+                    invoice_lines=[{"name": "Service", "quantity": 1,
+                                    "price_unit": float(action_params.get("amount", 0) or 0)}],
+                )
+
+            elif action == "payment":
+                log.warning(
+                    "Payment action requires manual processing — no payment MCP. Amount: %s",
+                    action_params.get("amount", "?"),
+                )
+
+            else:
+                log.warning("Unknown action type: %s — no dispatch performed", action)
+
+        except Exception as exc:
+            log.exception("Dispatch failed for action=%s", action)
+            self.audit.log(
+                action_type=action,
+                actor="orchestrator",
+                target=action_params.get("recipient", ""),
+                result="failure",
+                error=str(exc)[:200],
+            )
+            return
+
         self.audit.log(
             action_type=action,
             actor="orchestrator",
-            target=action_params.get("recipient", ""),
-            parameters=action_params,
+            target=action_params.get("recipient", action_params.get("to", "")),
+            parameters={k: str(v) for k, v in action_params.items()},
             approval_status="approved",
             approved_by="human",
+            result="success",
         )
-        # MCP dispatch will be implemented per MCP server in later phases
 
     def _start_watcher_process(self, watcher_module: str, watcher_name: str) -> subprocess.Popen:
         """Start a watcher as a subprocess."""

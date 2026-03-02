@@ -51,3 +51,15 @@ htmlcov/
 
 # Playwright
 playwright/.cache/
+
+# Vault symlink (contains personal business data)
+vault
+
+# WhatsApp QR (auth token)
+whatsapp_qr.png
+
+# Claude Code local settings
+.claude/settings.json
+
+# Session/scratch files
+last_session.txt

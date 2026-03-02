@@ -41,29 +41,41 @@ class FacebookClient:
         message: str,
         *,
         image_url: str | None = None,
+        image_bytes: bytes | None = None,
+        image_filename: str | None = None,
         link: str | None = None,
     ) -> dict[str, Any]:
-        """Post to a Facebook Page."""
+        """Post to a Facebook Page.
+
+        image_bytes takes priority over image_url.  Pass image_bytes + image_filename
+        to upload a local file directly (no public URL required).
+        """
         if self._dry_run:
             log.info("[DRY_RUN] Would post to Facebook page %s: %s", page_id, message[:80])
             return {"status": "dry_run", "page_id": page_id}
 
         page_token = self._get_page_token(page_id)
-        data: dict[str, str] = {
-            "message": message,
-            "access_token": page_token,
-        }
-        if link:
-            data["link"] = link
-
-        endpoint = f"{GRAPH_API_BASE}/{page_id}"
-        if image_url:
-            endpoint += "/photos"
-            data["url"] = image_url
-        else:
-            endpoint += "/feed"
 
         with httpx.Client() as client:
-            resp = client.post(endpoint, data=data)
+            if image_bytes:
+                # Binary photo upload — no public URL needed
+                resp = client.post(
+                    f"{GRAPH_API_BASE}/{page_id}/photos",
+                    data={"message": message, "access_token": page_token},
+                    files={"source": (image_filename or "image.jpg", image_bytes)},
+                )
+            elif image_url:
+                # Public URL photo upload
+                resp = client.post(
+                    f"{GRAPH_API_BASE}/{page_id}/photos",
+                    data={"url": image_url, "message": message, "access_token": page_token},
+                )
+            else:
+                # Text-only feed post
+                data: dict[str, str] = {"message": message, "access_token": page_token}
+                if link:
+                    data["link"] = link
+                resp = client.post(f"{GRAPH_API_BASE}/{page_id}/feed", data=data)
+
             resp.raise_for_status()
             return {"status": "posted", "post_id": resp.json().get("id", "")}

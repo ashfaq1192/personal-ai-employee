@@ -56,9 +56,10 @@ class Config:
         self.whatsapp_webhook_verify_token: str = os.environ.get(
             "WHATSAPP_WEBHOOK_VERIFY_TOKEN", "ai_employee_verify"
         )
-        self.whatsapp_access_token: str = os.environ.get(
-            "WHATSAPP_ACCESS_TOKEN", ""
-        ) or self.meta_access_token
+        self.whatsapp_access_token: str = (
+            os.environ.get("WHATSAPP_ACCESS_TOKEN", "")
+            or os.environ.get("META_ACCESS_TOKEN", "")
+        )
         self.rate_limit_whatsapp: int = int(
             os.environ.get("RATE_LIMIT_WHATSAPP_PER_HOUR", "20")
         )

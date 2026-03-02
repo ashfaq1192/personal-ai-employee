@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Employee — Operations Center</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        brand: { 50:'#eff6ff', 500:'#3b82f6', 600:'#2563eb', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+  body { background: #0f172a; }
+  .sidebar-item { transition: background 0.15s; }
+  .sidebar-item.active { background: #1e3a5f; border-left: 3px solid #3b82f6; }
+  .sidebar-item:not(.active):hover { background: #1e293b; }
+  .tab-btn.active { border-bottom: 2px solid #3b82f6; color: #60a5fa; }
+  .toast { animation: slideIn 0.3s ease; }
+  @keyframes slideIn { from { transform: translateX(100%); opacity:0; } to { transform: translateX(0); opacity:1; } }
+  .priority-high { color: #ef4444; }
+  .priority-normal { color: #6b7280; }
+  .priority-low { color: #22c55e; }
+  .result-success { color: #22c55e; }
+  .result-failure { color: #ef4444; }
+  .result-pending { color: #f59e0b; }
+  .char-warn { color: #f59e0b; }
+  .char-over { color: #ef4444; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #0f172a; }
+  ::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 3px; }
+  .spinner { border: 2px solid #1e3a5f; border-top-color: #3b82f6; border-radius: 50%; width:18px; height:18px; animation: spin 0.7s linear infinite; display:inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .badge { font-size:0.65rem; min-width:1.2rem; height:1.2rem; line-height:1.2rem; }
+  .approval-card { background:#111827; border:1px solid #1e3a5f; }
+  .approval-card:hover { border-color:#3b82f6; }
+</style>
+</head>
+<body class="text-slate-200 font-sans text-sm">
+
+<!-- ── Toast container ─────────────────────────────────────── -->
+<div id="toasts" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+<!-- ── Header ──────────────────────────────────────────────── -->
+<header class="fixed top-0 left-0 right-0 h-12 bg-slate-900 border-b border-slate-700 flex items-center px-4 gap-4 z-40">
+  <span class="font-bold text-blue-400 text-base tracking-wide">AI Employee</span>
+  <span id="mode-badge" class="text-xs px-2 py-0.5 rounded font-mono bg-slate-700 text-slate-300">—</span>
+  <span class="flex-1"></span>
+  <div id="proc-list" class="flex gap-2 text-xs text-slate-400"></div>
+  <button onclick="fullRefresh()" class="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-700 transition" title="Refresh">↻</button>
+</header>
+
+<!-- ── Layout ──────────────────────────────────────────────── -->
+<div class="flex pt-12 h-screen">
+
+  <!-- Sidebar -->
+  <nav class="w-48 shrink-0 bg-slate-900 border-r border-slate-700 overflow-y-auto flex flex-col">
+    <div id="nav-items" class="flex flex-col pt-2">
+      <button class="sidebar-item flex items-center gap-2 px-4 py-2.5 text-left" data-tab="inbox">
+        <span>📧</span><span>Inbox</span>
+        <span id="badge-inbox" class="ml-auto badge bg-blue-700 text-white rounded-full text-center hidden"></span>
+      </button>
+      <button class="sidebar-item flex items-center gap-2 px-4 py-2.5 text-left" data-tab="approvals">
+        <span>⏳</span><span>Approvals</span>
+        <span id="badge-approvals" class="ml-auto badge bg-yellow-600 text-white rounded-full text-center hidden"></span>
+      </button>
+      <button class="sidebar-item flex items-center gap-2 px-4 py-2.5 text-left" data-tab="social">
+        <span>📣</span><span>Social</span>
+      </button>
+      <button class="sidebar-item flex items-center gap-2 px-4 py-2.5 text-left" data-tab="odoo">
+        <span>🏢</span><span>Odoo</span>
+      </button>
+      <button class="sidebar-item flex items-center gap-2 px-4 py-2.5 text-left" data-tab="audit">
+        <span>📋</span><span>Audit Log</span>
+      </button>
+      <button class="sidebar-item flex items-center gap-2 px-4 py-2.5 text-left" data-tab="briefing">
+        <span>📊</span><span>Briefing</span>
+      </button>
+    </div>
+    <!-- WhatsApp Status -->
+    <div class="mt-auto px-4 py-3 border-t border-slate-700 text-xs text-slate-500">
+      <div id="wa-status-dot" class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+        <span>WhatsApp</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main class="flex-1 overflow-hidden flex flex-col">
+
+    <!-- ── INBOX TAB ──────────────────────────────────────── -->
+    <div id="tab-inbox" class="tab-content flex-1 flex flex-col hidden overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-700 flex items-center gap-3">
+        <h1 class="font-semibold text-base text-white">Inbox</h1>
+        <div class="flex gap-1">
+          <button id="inbox-tab-email" class="tab-btn active text-xs px-3 py-1 text-slate-300 hover:text-white" onclick="switchInboxTab('email')">Emails</button>
+          <button id="inbox-tab-wa" class="tab-btn text-xs px-3 py-1 text-slate-300 hover:text-white" onclick="switchInboxTab('wa')">WhatsApp</button>
+        </div>
+        <span class="flex-1"></span>
+        <button onclick="pullGmail()" id="btn-pull-gmail"
+          class="text-xs bg-blue-700 hover:bg-blue-600 text-white px-3 py-1 rounded transition">Pull Gmail</button>
+      </div>
+      <div class="flex flex-1 overflow-hidden">
+        <!-- Email list panel -->
+        <div class="w-72 shrink-0 border-r border-slate-700 overflow-y-auto" id="inbox-list-panel">
+          <div id="inbox-list" class="flex flex-col divide-y divide-slate-800"></div>
+        </div>
+        <!-- Email detail panel -->
+        <div class="flex-1 overflow-y-auto flex flex-col p-4 gap-4" id="inbox-detail-panel">
+          <div id="inbox-detail" class="text-slate-500 text-sm flex-1 flex items-center justify-center">
+            Select a message to view
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── APPROVALS TAB ──────────────────────────────────── -->
+    <div id="tab-approvals" class="tab-content flex-1 flex flex-col hidden overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-700 flex items-center gap-3">
+        <h1 class="font-semibold text-base text-white">Pending Approvals</h1>
+        <span class="flex-1"></span>
+        <button onclick="loadApprovals()" class="text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded">↻ Refresh</button>
+      </div>
+      <div id="approvals-grid" class="flex-1 overflow-y-auto p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 content-start">
+        <p class="text-slate-500 col-span-full text-center py-8">Loading…</p>
+      </div>
+    </div>
+
+    <!-- ── SOCIAL TAB ─────────────────────────────────────── -->
+    <div id="tab-social" class="tab-content flex-1 flex flex-col hidden overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-700 flex items-center gap-3">
+        <h1 class="font-semibold text-base text-white">Social Publishing</h1>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4">
+        <!-- Platform tabs -->
+        <div class="flex gap-1 mb-4 border-b border-slate-700 pb-1">
+          <button class="tab-btn active text-xs px-3 py-1" id="social-tab-li" onclick="switchSocialTab('li')">💼 LinkedIn</button>
+          <button class="tab-btn text-xs px-3 py-1" id="social-tab-fb" onclick="switchSocialTab('fb')">📘 Facebook</button>
+          <button class="tab-btn text-xs px-3 py-1" id="social-tab-ig" onclick="switchSocialTab('ig')">📸 Instagram</button>
+          <button class="tab-btn text-xs px-3 py-1" id="social-tab-tw" onclick="switchSocialTab('tw')">🐦 Twitter/X</button>
+        </div>
+
+        <!-- LinkedIn -->
+        <div id="social-panel-li" class="social-panel">
+          <label class="block text-xs text-slate-400 mb-1">Post text</label>
+          <textarea id="li-text" rows="6" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500 resize-none" placeholder="Write your LinkedIn post…"></textarea>
+          <div class="mt-2 flex items-center gap-3">
+            <label class="text-xs text-slate-400">Image URL (optional)</label>
+            <input id="li-img" type="text" class="flex-1 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500" placeholder="https://… or /media/upload_…">
+            <button onclick="postSocial('linkedin')" id="btn-li-post"
+              class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-4 py-1.5 rounded transition">Post to LinkedIn</button>
+          </div>
+        </div>
+
+        <!-- Facebook -->
+        <div id="social-panel-fb" class="social-panel hidden">
+          <label class="block text-xs text-slate-400 mb-1">Post text</label>
+          <textarea id="fb-text" rows="6" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500 resize-none" placeholder="Write your Facebook post…"></textarea>
+          <div class="mt-2 flex items-center gap-3">
+            <label class="text-xs text-slate-400">Image URL (optional)</label>
+            <input id="fb-img" type="text" class="flex-1 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500" placeholder="https://…">
+            <button onclick="postSocial('facebook')" id="btn-fb-post"
+              class="bg-blue-800 hover:bg-blue-700 text-white text-xs px-4 py-1.5 rounded transition">Post to Facebook</button>
+          </div>
+        </div>
+
+        <!-- Instagram -->
+        <div id="social-panel-ig" class="social-panel hidden">
+          <div class="bg-blue-950/30 border border-blue-800/40 rounded p-2 mb-3 text-xs text-blue-300">
+            💡 You can use the drag-and-drop uploader below <strong>or</strong> paste a public image URL. Local uploads are auto-published to a public host for Instagram.
+          </div>
+          <label class="block text-xs text-slate-400 mb-1">Caption</label>
+          <textarea id="ig-text" rows="5" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-pink-500 resize-none" placeholder="Caption for your Instagram post…"></textarea>
+          <div class="mt-2 flex items-center gap-3">
+            <label class="text-xs text-slate-400">Image URL <span class="text-pink-400">(required)</span></label>
+            <input id="ig-img" type="text" class="flex-1 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-pink-500" placeholder="https://public-host.com/image.jpg">
+            <button onclick="postSocial('instagram')" id="btn-ig-post"
+              class="bg-pink-700 hover:bg-pink-600 text-white text-xs px-4 py-1.5 rounded transition">Post to Instagram</button>
+          </div>
+        </div>
+
+        <!-- Twitter -->
+        <div id="social-panel-tw" class="social-panel hidden">
+          <label class="block text-xs text-slate-400 mb-1">Tweet <span id="tw-char-count" class="font-mono ml-2">0/280</span></label>
+          <textarea id="tw-text" rows="4" maxlength="280" oninput="updateTweetCount()"
+            class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-sky-500 resize-none" placeholder="What's happening?"></textarea>
+          <div class="mt-2 flex justify-end">
+            <button onclick="postSocial('twitter')" id="btn-tw-post"
+              class="bg-sky-600 hover:bg-sky-500 text-white text-xs px-4 py-1.5 rounded transition">Post to Twitter/X</button>
+          </div>
+        </div>
+
+        <!-- Media upload (shared) -->
+        <div class="mt-6 border border-dashed border-slate-600 rounded-lg p-4 text-center" id="drop-zone">
+          <p class="text-slate-400 text-xs mb-2">Drag & drop or click to upload media</p>
+          <input type="file" id="media-file" accept="image/*,video/mp4,video/quicktime" class="hidden" onchange="uploadMedia()">
+          <button onclick="document.getElementById('media-file').click()" class="text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded">Choose file</button>
+          <div id="media-preview" class="mt-3 hidden">
+            <img id="media-preview-img" class="max-h-32 mx-auto rounded" src="">
+            <p id="media-url-label" class="text-xs text-green-400 mt-1 font-mono"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ODOO TAB ────────────────────────────────────────── -->
+    <div id="tab-odoo" class="tab-content flex-1 flex flex-col hidden overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-700 flex items-center gap-3">
+        <h1 class="font-semibold text-base text-white">Odoo ERP</h1>
+        <span class="flex-1"></span>
+        <button onclick="loadOdoo()" id="btn-odoo-fetch" class="text-xs bg-purple-700 hover:bg-purple-600 text-white px-3 py-1 rounded transition">Fetch Data</button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4">
+        <div id="odoo-kpis" class="grid grid-cols-3 gap-4 mb-6">
+          <div class="bg-slate-800 rounded-lg p-4 border border-slate-700">
+            <p class="text-xs text-slate-400 mb-1">Total Invoiced</p>
+            <p id="odoo-revenue" class="text-2xl font-bold text-purple-300">—</p>
+          </div>
+          <div class="bg-slate-800 rounded-lg p-4 border border-slate-700">
+            <p class="text-xs text-slate-400 mb-1">Posted Invoices</p>
+            <p id="odoo-posted" class="text-2xl font-bold text-green-400">—</p>
+          </div>
+          <div class="bg-slate-800 rounded-lg p-4 border border-slate-700">
+            <p class="text-xs text-slate-400 mb-1">Customers</p>
+            <p id="odoo-customers" class="text-2xl font-bold text-blue-400">—</p>
+          </div>
+        </div>
+        <h2 class="text-xs font-semibold text-slate-400 mb-2">Recent Invoices</h2>
+        <div id="odoo-table-wrap" class="overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="text-slate-500 border-b border-slate-700">
+              <tr>
+                <th class="py-1.5 pr-3">Name</th>
+                <th class="py-1.5 pr-3">Partner</th>
+                <th class="py-1.5 pr-3">Date</th>
+                <th class="py-1.5 pr-3">Amount</th>
+                <th class="py-1.5">State</th>
+              </tr>
+            </thead>
+            <tbody id="odoo-tbody" class="divide-y divide-slate-800">
+              <tr><td colspan="5" class="py-4 text-center text-slate-500">Click "Fetch Data" to load invoices</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── AUDIT TAB ──────────────────────────────────────── -->
+    <div id="tab-audit" class="tab-content flex-1 flex flex-col hidden overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-700 flex items-center gap-3">
+        <h1 class="font-semibold text-base text-white">Audit Log</h1>
+        <input id="audit-filter" type="text" oninput="filterAudit()"
+          class="ml-4 bg-slate-800 border border-slate-600 rounded px-2 py-0.5 text-xs text-white focus:outline-none focus:border-blue-500 w-48"
+          placeholder="Filter logs…">
+        <span class="flex-1"></span>
+        <button onclick="loadAudit()" class="text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded">↻ Refresh</button>
+      </div>
+      <div class="flex-1 overflow-y-auto">
+        <table class="w-full text-xs text-left">
+          <thead class="sticky top-0 bg-slate-900 text-slate-500 border-b border-slate-700">
+            <tr>
+              <th class="py-2 px-4">Time</th>
+              <th class="py-2 px-3">Actor</th>
+              <th class="py-2 px-3">Action</th>
+              <th class="py-2 px-3">Target</th>
+              <th class="py-2 px-3">Result</th>
+            </tr>
+          </thead>
+          <tbody id="audit-tbody" class="divide-y divide-slate-800">
+            <tr><td colspan="5" class="py-4 text-center text-slate-500">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── BRIEFING TAB ───────────────────────────────────── -->
+    <div id="tab-briefing" class="tab-content flex-1 flex flex-col hidden overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-700 flex items-center gap-3">
+        <h1 class="font-semibold text-base text-white">CEO Briefing</h1>
+        <span class="flex-1"></span>
+        <button onclick="generateBriefing()" id="btn-gen-briefing"
+          class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1 rounded transition">Generate Now</button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4">
+        <div id="briefings-list" class="flex flex-col gap-4">
+          <p class="text-slate-500 text-center py-8">Loading briefings…</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ─── State ─────────────────────────────────────────────────────────
+const state = {
+  activeTab: localStorage.getItem('activeTab') || 'inbox',
+  inboxSubTab: 'email',
+  socialSubTab: 'li',
+  selectedEmail: null,
+  emailList: [],
+  waList: [],
+  auditRows: [],
+  prevInboxCount: -1,
+  prevPendingCount: -1,
+  uploadedMediaUrl: '',
+};
+
+// ─── Toast ─────────────────────────────────────────────────────────
+function toast(msg, type = 'ok') {
+  const colors = { ok: 'bg-green-700', error: 'bg-red-700', info: 'bg-blue-700', warn: 'bg-yellow-600' };
+  const el = document.createElement('div');
+  el.className = `toast pointer-events-auto ${colors[type] || colors.ok} text-white text-xs px-4 py-2 rounded shadow-lg max-w-xs`;
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ─── Tab switching ──────────────────────────────────────────────────
+function switchTab(tab) {
+  state.activeTab = tab;
+  localStorage.setItem('activeTab', tab);
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  const panel = document.getElementById('tab-' + tab);
+  if (panel) panel.classList.remove('hidden');
+  const btn = document.querySelector(`[data-tab="${tab}"]`);
+  if (btn) btn.classList.add('active');
+  refreshActiveTab();
+}
+
+function switchInboxTab(sub) {
+  state.inboxSubTab = sub;
+  ['email','wa'].forEach(t => {
+    document.getElementById('inbox-tab-' + t).classList.toggle('active', t === sub);
+  });
+  document.getElementById('btn-pull-gmail').classList.toggle('hidden', sub === 'wa');
+  renderInboxList();
+}
+
+function switchSocialTab(sub) {
+  state.socialSubTab = sub;
+  ['li','fb','ig','tw'].forEach(t => {
+    document.getElementById('social-tab-' + t).classList.toggle('active', t === sub);
+    document.getElementById('social-panel-' + t).classList.toggle('hidden', t !== sub);
+  });
+}
+
+// ─── Nav setup ─────────────────────────────────────────────────────
+document.querySelectorAll('[data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// ─── API helpers ───────────────────────────────────────────────────
+async function get(url) {
+  const r = await fetch(url);
+  return r.json();
+}
+async function post(url, body = {}) {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  return r.json();
+}
+
+function spinner(id) {
+  const el = document.getElementById(id);
+  if (el) { el._orig = el.textContent; el.innerHTML = '<span class="spinner"></span>'; el.disabled = true; }
+}
+function unspinner(id) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = el._orig || '↻'; el.disabled = false; }
+}
+
+// ─── Status bar ────────────────────────────────────────────────────
+async function loadStatus() {
+  try {
+    const d = await get('/api/status');
+    const badge = document.getElementById('mode-badge');
+    badge.textContent = d.mode;
+    badge.className = `text-xs px-2 py-0.5 rounded font-mono ${d.mode === 'LIVE' ? 'bg-green-800 text-green-200' : d.mode === 'DEV_MODE' ? 'bg-yellow-800 text-yellow-200' : 'bg-blue-900 text-blue-200'}`;
+
+    // Sidebar badges
+    const inboxN = (d.counts?.email || 0);
+    const pendN = (d.counts?.pending || 0);
+    setBadge('badge-inbox', inboxN);
+    setBadge('badge-approvals', pendN);
+
+    // Notify if new inbox items
+    if (state.prevInboxCount >= 0 && inboxN > state.prevInboxCount) {
+      toast(`📧 ${inboxN - state.prevInboxCount} new inbox items`, 'info');
+    }
+    if (state.prevPendingCount >= 0 && pendN > state.prevPendingCount) {
+      toast(`⏳ ${pendN - state.prevPendingCount} new approval(s) pending`, 'warn');
+    }
+    state.prevInboxCount = inboxN;
+    state.prevPendingCount = pendN;
+
+    // Processes
+    const procs = d.processes || {};
+    const procEl = document.getElementById('proc-list');
+    procEl.innerHTML = Object.entries(procs).map(([name, status]) =>
+      `<span class="flex items-center gap-1">
+        <span class="w-2 h-2 rounded-full ${status === 'online' ? 'bg-green-500' : 'bg-red-500'}"></span>
+        <span class="truncate max-w-24">${name}</span>
+      </span>`
+    ).join('') || '<span class="text-slate-600">No PM2 processes</span>';
+  } catch (e) {}
+}
+
+function setBadge(id, n) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (n > 0) { el.textContent = n; el.classList.remove('hidden'); }
+  else { el.classList.add('hidden'); }
+}
+
+// ─── WhatsApp status ───────────────────────────────────────────────
+async function loadWAStatus() {
+  try {
+    const d = await get('/api/whatsapp/status');
+    const el = document.getElementById('wa-status-dot');
+    const ok = d.status === 'ok';
+    el.innerHTML = `<span class="w-2 h-2 rounded-full ${ok ? 'bg-green-500' : 'bg-red-500'}"></span><span>${ok ? 'WA (' + d.pending_messages + ')' : 'WA offline'}</span>`;
+  } catch (e) {}
+}
+
+// ─── INBOX ─────────────────────────────────────────────────────────
+async function loadInbox() {
+  const [emails, wa] = await Promise.all([get('/api/emails'), get('/api/whatsapp')]);
+  state.emailList = emails;
+  state.waList = wa;
+  renderInboxList();
+}
+
+function renderInboxList() {
+  const list = document.getElementById('inbox-list');
+  const items = state.inboxSubTab === 'email' ? state.emailList : state.waList;
+  if (!items.length) {
+    list.innerHTML = '<p class="text-slate-500 text-center py-8 text-xs">No messages</p>';
+    return;
+  }
+  list.innerHTML = items.map((it, i) => {
+    const name = it.from || it.chat || 'Unknown';
+    const initial = name.trim()[0]?.toUpperCase() || '?';
+    const subject = it.subject || it.keywords || '';
+    const time = (it.received || '').slice(0, 16).replace('T', ' ');
+    const priority = it.priority || 'normal';
+    const prioColor = priority === 'high' ? 'bg-red-600' : priority === 'low' ? 'bg-green-700' : 'bg-slate-600';
+    return `<button class="flex items-start gap-2 px-3 py-2.5 text-left hover:bg-slate-800 transition w-full"
+        onclick="selectMessage(${i})">
+        <span class="w-8 h-8 rounded-full bg-blue-800 text-blue-200 text-xs font-bold flex items-center justify-center shrink-0">${initial}</span>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-1">
+            <span class="font-medium text-white text-xs truncate flex-1">${escHtml(name)}</span>
+            <span class="w-2 h-2 rounded-full ${prioColor} shrink-0"></span>
+          </div>
+          <p class="text-slate-400 text-xs truncate">${escHtml(subject)}</p>
+          <p class="text-slate-600 text-xs">${time}</p>
+        </div>
+      </button>`;
+  }).join('');
+}
+
+async function selectMessage(i) {
+  const items = state.inboxSubTab === 'email' ? state.emailList : state.waList;
+  const item = items[i];
+  state.selectedEmail = item;
+  const detail = document.getElementById('inbox-detail');
+  detail.innerHTML = '<span class="spinner"></span>';
+
+  if (state.inboxSubTab === 'email') {
+    const d = await get('/api/email-content?file=' + encodeURIComponent(item.filename));
+    detail.innerHTML = renderEmailDetail(item, d.content || '');
+  } else {
+    const d = await get('/api/whatsapp-content?file=' + encodeURIComponent(item.filename));
+    detail.innerHTML = renderWADetail(item, d.content || '');
+  }
+}
+
+function renderEmailDetail(item, content) {
+  const body = content.replace(/^---[\s\S]*?---\s*/m, '').trim();
+  return `
+    <div class="flex items-start justify-between mb-3">
+      <div>
+        <h2 class="text-white font-semibold">${escHtml(item.subject || '(no subject)')}</h2>
+        <p class="text-slate-400 text-xs">From: ${escHtml(item.from || '')} &nbsp;·&nbsp; ${(item.received || '').slice(0, 16).replace('T',' ')}</p>
+      </div>
+      <button onclick="markDone('${escHtml(item.filename)}')" class="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded">Mark Done</button>
+    </div>
+    <div class="bg-slate-800 rounded p-3 text-xs text-slate-300 whitespace-pre-wrap mb-4 max-h-48 overflow-y-auto">${escHtml(body)}</div>
+    <div>
+      <label class="text-xs text-slate-400 block mb-1">Reply</label>
+      <textarea id="reply-body" rows="5" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500 resize-none" placeholder="Type your reply here…"></textarea>
+      <div class="flex justify-end mt-2 gap-2">
+        <button onclick="sendReply('${escHtml(item.filename)}','${escHtml(item.from||'')}','${escHtml(item.subject||'')}')"
+          class="text-xs bg-blue-700 hover:bg-blue-600 text-white px-4 py-1.5 rounded transition">Send Reply →</button>
+      </div>
+    </div>`;
+}
+
+function renderWADetail(item, content) {
+  const body = content.replace(/^---[\s\S]*?---\s*/m, '').trim();
+  return `
+    <div class="flex items-start justify-between mb-3">
+      <div>
+        <h2 class="text-white font-semibold">${escHtml(item.from || item.chat || 'WhatsApp')}</h2>
+        <p class="text-slate-400 text-xs">${(item.received || '').slice(0, 16).replace('T',' ')}</p>
+      </div>
+    </div>
+    <div class="bg-slate-800 rounded p-3 text-xs text-slate-300 whitespace-pre-wrap mb-4 max-h-48 overflow-y-auto">${escHtml(body)}</div>
+    <div>
+      <label class="text-xs text-slate-400 block mb-1">Reply</label>
+      <textarea id="reply-body" rows="4" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-green-500 resize-none" placeholder="Type your WhatsApp reply…"></textarea>
+      <div class="flex justify-end mt-2">
+        <button onclick="sendWAReply('${escHtml(item.filename)}','${escHtml(item.from||'')}')"
+          class="text-xs bg-green-700 hover:bg-green-600 text-white px-4 py-1.5 rounded transition">Send WA Reply →</button>
+      </div>
+    </div>`;
+}
+
+async function sendReply(filename, from, subject) {
+  const body = document.getElementById('reply-body')?.value?.trim();
+  if (!body) { toast('Reply cannot be empty', 'error'); return; }
+  const r = await post('/api/email/reply', { filename, from, subject, reply_body: body });
+  if (r.status === 'ok') {
+    toast('Draft approval created — check Approvals tab', 'ok');
+    document.getElementById('reply-body').value = '';
+  } else {
+    toast('Error: ' + (r.message || 'unknown'), 'error');
+  }
+}
+
+async function sendWAReply(filename, from) {
+  const body = document.getElementById('reply-body')?.value?.trim();
+  if (!body) { toast('Reply cannot be empty', 'error'); return; }
+  const r = await post('/api/whatsapp/reply', { filename, from, reply_body: body });
+  if (r.status === 'ok') {
+    toast('WA approval created — check Approvals tab', 'ok');
+    document.getElementById('reply-body').value = '';
+  } else {
+    toast('Error: ' + (r.message || 'unknown'), 'error');
+  }
+}
+
+async function markDone(filename) {
+  const r = await post('/api/email/done', { filename });
+  if (r.status === 'ok') {
+    toast('Marked done', 'ok');
+    await loadInbox();
+    document.getElementById('inbox-detail').innerHTML = '<p class="text-slate-500 text-center py-8">Select a message to view</p>';
+  } else {
+    toast('Error: ' + (r.message || 'unknown'), 'error');
+  }
+}
+
+async function pullGmail() {
+  spinner('btn-pull-gmail');
+  const r = await post('/api/gmail/pull');
+  unspinner('btn-pull-gmail');
+  if (r.status === 'ok') {
+    toast(`Pulled ${r.new_emails} new email(s)`, 'ok');
+    await loadInbox();
+  } else {
+    toast('Gmail pull error: ' + (r.message || 'unknown'), 'error');
+  }
+}
+
+// ─── APPROVALS ─────────────────────────────────────────────────────
+async function loadApprovals() {
+  const items = await get('/api/pending');
+  const grid = document.getElementById('approvals-grid');
+  if (!items.length) {
+    grid.innerHTML = '<p class="text-slate-500 col-span-full text-center py-8">No pending approvals</p>';
+    return;
+  }
+  grid.innerHTML = items.map(it => renderApprovalCard(it)).join('');
+}
+
+function actionIcon(action) {
+  const icons = { email_send:'📧', send_email:'📧', whatsapp_reply:'💬', whatsapp_send:'💬', linkedin_post:'💼', social_post:'💼', facebook_post:'📘', instagram_post:'📸', twitter_post:'🐦', invoice:'🧾', create_invoice:'🧾', payment:'💰' };
+  return icons[action] || '📄';
+}
+
+function renderApprovalCard(it) {
+  const icon = actionIcon(it.action);
+  const preview = it.reply_preview || '';
+  const id = 'card-' + it.filename.replace(/[^a-zA-Z0-9]/g, '_');
+  return `
+    <div class="approval-card rounded-lg p-4 flex flex-col gap-2 transition" id="${id}">
+      <div class="flex items-start gap-2">
+        <span class="text-2xl">${icon}</span>
+        <div class="flex-1 min-w-0">
+          <p class="font-medium text-white text-xs">${escHtml(it.action)}</p>
+          <p class="text-slate-400 text-xs truncate">${escHtml(it.to || '—')}</p>
+          ${it.subject ? `<p class="text-slate-500 text-xs truncate">${escHtml(it.subject)}</p>` : ''}
+        </div>
+      </div>
+      ${preview ? `<div class="bg-slate-800 rounded p-2 text-xs text-slate-300 line-clamp-3">${escHtml(preview)}</div>` : ''}
+      <p class="text-slate-600 text-xs">${it.requested_at ? it.requested_at.slice(0,16).replace('T',' ') : ''}</p>
+      <div class="flex gap-2 mt-auto pt-1">
+        <button onclick="approveAction('${escHtml(it.filename)}')" id="approve-${id}"
+          class="flex-1 text-xs bg-green-700 hover:bg-green-600 text-white py-1.5 rounded transition font-semibold">✅ Approve</button>
+        <button onclick="rejectAction('${escHtml(it.filename)}')" id="reject-${id}"
+          class="flex-1 text-xs bg-red-800 hover:bg-red-700 text-white py-1.5 rounded transition">❌ Reject</button>
+      </div>
+    </div>`;
+}
+
+async function approveAction(filename) {
+  const r = await post('/api/approve', { filename });
+  if (r.status === 'approved' || r.status === 'ok') {
+    toast(`Approved & sent: ${r.action || filename}`, 'ok');
+    await loadApprovals();
+  } else {
+    toast('Approve failed: ' + (r.message || r.send_error || 'unknown'), 'error');
+  }
+}
+
+async function rejectAction(filename) {
+  const r = await post('/api/reject', { filename });
+  if (r.status === 'rejected') {
+    toast('Rejected', 'info');
+    await loadApprovals();
+  } else {
+    toast('Reject failed', 'error');
+  }
+}
+
+// ─── SOCIAL ────────────────────────────────────────────────────────
+function updateTweetCount() {
+  const len = (document.getElementById('tw-text')?.value || '').length;
+  const el = document.getElementById('tw-char-count');
+  if (el) {
+    el.textContent = len + '/280';
+    el.className = len > 260 ? 'font-mono ml-2 char-over' : len > 240 ? 'font-mono ml-2 char-warn' : 'font-mono ml-2 text-slate-400';
+  }
+}
+
+async function postSocial(platform) {
+  const cfg = {
+    linkedin:  { url:'/api/linkedin/post',  text: document.getElementById('li-text')?.value, img: document.getElementById('li-img')?.value, btn:'btn-li-post' },
+    facebook:  { url:'/api/facebook/post',  text: document.getElementById('fb-text')?.value, img: document.getElementById('fb-img')?.value, btn:'btn-fb-post' },
+    instagram: { url:'/api/instagram/post', text: document.getElementById('ig-text')?.value, img: document.getElementById('ig-img')?.value, btn:'btn-ig-post' },
+    twitter:   { url:'/api/twitter/post',   text: document.getElementById('tw-text')?.value, img: '',                                        btn:'btn-tw-post' },
+  }[platform];
+  if (!cfg) return;
+  const text = (cfg.text || '').trim();
+  if (!text) { toast('Post text is required', 'error'); return; }
+  // Use uploaded media URL if available and no manual URL typed
+  const image_url = (cfg.img || state.uploadedMediaUrl || '').trim();
+  spinner(cfg.btn);
+  const r = await post(cfg.url, { text, image_url: image_url || undefined });
+  unspinner(cfg.btn);
+  if (r.status === 'ok') {
+    toast((r.dry_run ? '[DRY_RUN] Would post' : 'Posted!') + (r.post_id || r.tweet_id ? ' — ID: ' + (r.post_id || r.tweet_id) : ''), 'ok');
+  } else {
+    toast('Error: ' + (r.message || 'unknown'), 'error');
+  }
+}
+
+async function uploadMedia() {
+  const file = document.getElementById('media-file').files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  toast('Uploading…', 'info');
+  const r = await fetch('/api/media/upload', { method: 'POST', body: fd }).then(x => x.json());
+  if (r.status === 'ok') {
+    state.uploadedMediaUrl = r.url;
+    document.getElementById('media-url-label').textContent = r.url;
+    const prev = document.getElementById('media-preview-img');
+    if (file.type.startsWith('image/')) { prev.src = r.url; }
+    document.getElementById('media-preview').classList.remove('hidden');
+    toast('Uploaded: ' + r.url, 'ok');
+  } else {
+    toast('Upload error: ' + r.message, 'error');
+  }
+}
+
+// Drag & drop
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('border-blue-500'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('border-blue-500'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('border-blue-500');
+  const file = e.dataTransfer.files[0];
+  if (file) { document.getElementById('media-file').files = e.dataTransfer.files; uploadMedia(); }
+});
+
+// ─── ODOO ──────────────────────────────────────────────────────────
+async function loadOdoo() {
+  spinner('btn-odoo-fetch');
+  const r = await post('/api/odoo/summary');
+  unspinner('btn-odoo-fetch');
+  if (r.status !== 'ok') {
+    toast('Odoo error: ' + (r.message || 'connection failed'), 'error');
+    return;
+  }
+  const inv = r.invoices || {};
+  document.getElementById('odoo-revenue').textContent = '$' + (inv.total_invoiced || 0).toLocaleString();
+  document.getElementById('odoo-posted').textContent = inv.posted || 0;
+  document.getElementById('odoo-customers').textContent = r.customers || 0;
+  const tbody = document.getElementById('odoo-tbody');
+  const rows = (inv.recent || []);
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-slate-500">No invoices found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(row => {
+    const stateColor = row.state === 'posted' ? 'text-green-400' : row.state === 'draft' ? 'text-yellow-400' : 'text-slate-400';
+    return `<tr class="hover:bg-slate-800/50">
+      <td class="py-1.5 px-4 text-white">${escHtml(row.name)}</td>
+      <td class="py-1.5 px-3 text-slate-300">${escHtml(row.partner)}</td>
+      <td class="py-1.5 px-3 text-slate-400">${row.date || '—'}</td>
+      <td class="py-1.5 px-3 text-white font-mono">$${(row.amount || 0).toLocaleString()}</td>
+      <td class="py-1.5 px-3 ${stateColor}">${row.state}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── AUDIT ─────────────────────────────────────────────────────────
+async function loadAudit() {
+  const rows = await get('/api/logs');
+  state.auditRows = rows;
+  renderAudit(rows);
+}
+
+function renderAudit(rows) {
+  const tbody = document.getElementById('audit-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-slate-500">No log entries</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(row => {
+    const ts = (row.timestamp || '').slice(0, 19).replace('T', ' ');
+    const result = row.result || '';
+    const resultColor = result === 'success' ? 'result-success' : result === 'failure' ? 'result-failure' : result === 'pending' ? 'result-pending' : 'text-slate-400';
+    return `<tr class="hover:bg-slate-800/50">
+      <td class="py-1.5 px-4 text-slate-500 font-mono whitespace-nowrap">${ts}</td>
+      <td class="py-1.5 px-3 text-slate-300">${escHtml(row.actor || '')}</td>
+      <td class="py-1.5 px-3 text-white">${escHtml(row.action_type || '')}</td>
+      <td class="py-1.5 px-3 text-slate-400 truncate max-w-xs">${escHtml(row.target || '')}</td>
+      <td class="py-1.5 px-3 font-semibold ${resultColor}">${escHtml(result) || '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterAudit() {
+  const q = document.getElementById('audit-filter').value.toLowerCase();
+  if (!q) { renderAudit(state.auditRows); return; }
+  renderAudit(state.auditRows.filter(r =>
+    JSON.stringify(r).toLowerCase().includes(q)
+  ));
+}
+
+// ─── BRIEFING ──────────────────────────────────────────────────────
+async function loadBriefings() {
+  const items = await get('/api/briefings');
+  const el = document.getElementById('briefings-list');
+  if (!items.length) {
+    el.innerHTML = '<p class="text-slate-500 text-center py-8">No briefings yet. Click "Generate Now" to create one.</p>';
+    return;
+  }
+  el.innerHTML = items.map((b, i) => `
+    <div class="bg-slate-800 border border-slate-700 rounded-lg">
+      <button onclick="toggleBriefing(${i})" class="w-full flex items-center justify-between px-4 py-3 text-left">
+        <div>
+          <span class="font-semibold text-white text-xs">${escHtml(b.filename)}</span>
+          ${b.summary ? `<p class="text-slate-400 text-xs mt-0.5">${escHtml(b.summary.slice(0,120))}</p>` : ''}
+        </div>
+        <span class="text-slate-500 text-xs">${b.week_revenue !== '—' ? '$' + b.week_revenue : ''} ▸</span>
+      </button>
+      <div id="briefing-body-${i}" class="hidden px-4 pb-4">
+        <pre class="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed">${escHtml((b.content || '').slice(0, 3000))}</pre>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleBriefing(i) {
+  const el = document.getElementById('briefing-body-' + i);
+  if (el) el.classList.toggle('hidden');
+}
+
+async function generateBriefing() {
+  spinner('btn-gen-briefing');
+  const r = await post('/api/briefing/generate');
+  unspinner('btn-gen-briefing');
+  if (r.status === 'ok') {
+    toast('Briefing generated!', 'ok');
+    await loadBriefings();
+  } else {
+    toast('Briefing error: ' + (r.message || 'unknown'), 'error');
+  }
+}
+
+// ─── Refresh logic ─────────────────────────────────────────────────
+function refreshActiveTab() {
+  const tab = state.activeTab;
+  if (tab === 'inbox') loadInbox();
+  else if (tab === 'approvals') loadApprovals();
+  else if (tab === 'audit') loadAudit();
+  else if (tab === 'briefing') loadBriefings();
+}
+
+async function fullRefresh() {
+  await loadStatus();
+  await loadWAStatus();
+  refreshActiveTab();
+}
+
+// ─── Utilities ─────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Init ──────────────────────────────────────────────────────────
+(async function init() {
+  await loadStatus();
+  await loadWAStatus();
+  switchTab(state.activeTab);
+  setInterval(loadStatus, 15_000);
+  setInterval(loadWAStatus, 30_000);
+  setInterval(refreshActiveTab, 15_000);
+})();
+</script>
+</body>
+</html>
