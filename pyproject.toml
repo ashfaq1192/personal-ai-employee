@@ -19,6 +19,7 @@ dependencies = [
     "pillow",
     "anthropic>=0.84.0",
     "pypdf>=4.0.0",
+    "google-cloud-pubsub>=2.35.0",
 ]
 
 [dependency-groups]

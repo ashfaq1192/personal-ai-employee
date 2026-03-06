@@ -625,9 +625,9 @@ def api_twitter_post(body: dict) -> dict:
         api_key     = os.environ.get("TWITTER_API_KEY", "")
         api_secret  = os.environ.get("TWITTER_API_SECRET", "")
         access_token  = os.environ.get("TWITTER_ACCESS_TOKEN", "")
-        access_secret = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET", "")
+        access_secret = os.environ.get("TWITTER_ACCESS_SECRET", "") or os.environ.get("TWITTER_ACCESS_TOKEN_SECRET", "")
         if not (api_key and api_secret and access_token and access_secret):
-            return {"status": "error", "message": "Twitter credentials missing in .env (TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)"}
+            return {"status": "error", "message": "Twitter credentials missing in .env (TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET)"}
         from src.mcp_servers.twitter_client import TwitterClient
         client = TwitterClient(api_key, api_secret, access_token, access_secret, dry_run=config.dry_run)
         result = client.post(text=text, media_path=media_path)
@@ -960,6 +960,25 @@ def api_contacts_memory() -> list:
         return [{"error": str(e)[:200]}]
 
 
+def api_performance_reviews() -> list:
+    """Return list of performance review files from vault/Performance_Reviews/."""
+    folder = vault / "Performance_Reviews"
+    if not folder.exists():
+        return []
+    items = []
+    for f in sorted(folder.glob("Performance_Review_*.md"), reverse=True)[:10]:
+        text = f.read_text(encoding="utf-8", errors="ignore")
+        fm = _parse_fm(text)
+        content = re.sub(r"^---\s*\n.*?\n---\s*\n", "", text, flags=re.DOTALL).strip()
+        items.append({
+            "filename": f.name,
+            "date": fm.get("date", f.stem.replace("Performance_Review_", "")),
+            "week_start": fm.get("week_start", ""),
+            "content": content[:5000],
+        })
+    return items
+
+
 def api_leads_list(_body: dict = {}) -> list:
     """List recent qualified leads from the vault."""
     folder = vault / "Leads"
@@ -1029,8 +1048,9 @@ class Handler(BaseHTTPRequestHandler):
             "/api/whatsapp/status":   lambda: api_whatsapp_scan(),
             "/api/calendar/today":    lambda: api_calendar_today(),
             "/api/calendar/upcoming": lambda: api_calendar_upcoming(),
-            "/api/leads":             lambda: api_leads_list(),
-            "/api/contacts":          lambda: api_contacts_memory(),
+            "/api/leads":                lambda: api_leads_list(),
+            "/api/contacts":             lambda: api_contacts_memory(),
+            "/api/performance-reviews":  lambda: api_performance_reviews(),
         }
         if path == "/":
             _html_file = Path(__file__).parent / "dashboard.html"
