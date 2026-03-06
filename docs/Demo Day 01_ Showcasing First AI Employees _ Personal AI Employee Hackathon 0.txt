@@ -1,0 +1,392 @@
+(Transcribed by TurboScribe.ai. Go Unlimited to remove this message.)
+
+(0:03 - 0:09)
+In the name of Allah, the most Gracious, the most Merciful. The recording has started. Let us test those who have put their hands down.
+
+(0:10 - 0:21)
+Those who want to show, put your hands down first. Then we will come to the same sequence. First of all, let us do like this.
+
+(0:22 - 0:38)
+If someone wants to show among our teachers, let us see them first. So that everyone has a benchmark that how much they have to show. So, among our teachers... Sorry, you put your hands down now.
+
+(0:39 - 0:49)
+I had said something wrong to you. First, let us record the teachers. Those who are students, put your hands down so that we can record the teachers.
+
+(0:51 - 0:56)
+Otherwise, you will also get a record. We do not record students, but we record teachers. They are our friends.
+
+(0:56 - 1:00)
+There is recording among friends. We have to record. Okay.
+
+(1:02 - 1:08)
+Junaid has put his hand down first. Let us see him. Junaid.
+
+(1:09 - 1:17)
+Yes, I will start. One person has put his hand down. Qasim.
+
+(1:17 - 1:21)
+Qasim, you start. Sorry. No, sir.
+
+(1:22 - 1:28)
+Let us give Junaid a chance. He is very fast. He is saying that he has put his hand down first.
+
+(1:29 - 1:34)
+Okay, Junaid. Yes. Okay, sir.
+
+(1:34 - 1:42)
+Our target in Hackathon Zero was to make an IKEA employee. We had different tiers for that. We had added the tier of Pledge Kingdom today.
+
+(1:43 - 1:48)
+Junaid, wait for a second. We had changed some of its accounting requirements. We had changed one more.
+
+(1:49 - 1:55)
+We have to discuss that with people. Yes. Okay, two things have changed in our Hackathon.
+
+(1:56 - 2:03)
+One, we were using Xerox here. Okay, this will be updated after Hackathon. Now, we are not using Xerox anymore.
+
+(2:04 - 2:11)
+We will be using Udo instead. We have the complete ERP. We will get what we were getting from Xerox.
+
+(2:12 - 2:28)
+Our IKEA employees will get all the other requirements to work. The second update we had was our Pledge Kingdom tier. When we checked our documents last time, we had three tiers.
+
+(2:28 - 2:45)
+The last one was Gold. Now, we have a new tier of Platinum where we will be taking our IKEA employees to the cloud and running them on VM. We had a concept that the IKEA employees don't have to be running on the same instance and can be replicated as much as they want.
+
+(2:46 - 3:05)
+So, we will have one on the cloud and one locally. So, how to make it, how to sync it, its minimum requirements, all of that has been updated in the document. Junaid, after today's class, update the Udo one as well.
+
+(3:05 - 3:16)
+Absolutely, sir. Please continue. The thing I have made in Hackathon Zero is Junior Junaid.
+
+(3:16 - 3:33)
+I wanted to make my own clone for a long time. I used this opportunity in this hackathon. Can I automate all the things I am doing? What is my current situation? The Silver Tier is complete.
+
+(3:33 - 3:48)
+The Bronze Tier is also complete. And the Gold Tier, a lot of things have been completed here. Before we go to the demo, let's see here what are the things my IKEA employees have.
+
+(3:49 - 3:57)
+What are they doing? Wait a second. Let's make a process on this. Let's select an Invigilator.
+
+(3:58 - 4:05)
+Qasim Bhai. Yes, sir. Give a number to Junaid in Hackathon 1 out of 10.
+
+(4:07 - 4:16)
+Okay, sir. So that we can put it in our database that you checked in Hackathon Zero, it will be in your name. And you can give as much as you want out of 10.
+
+(4:17 - 4:34)
+Let's talk about the capabilities. I provided all the skills that I had. And the most work I did in this week was on my Junior Junaid's AI Employee Harness.
+
+(4:34 - 4:55)
+By default, when we were using Claude, even though we said that Claude was our brain, he was doing all the work himself. Here, my target was that my Junior Junaid, just like I am managing the task, he should plan the task. And then run all the sub-agents' expenses and complete all the things.
+
+(4:57 - 5:16)
+The second different thing we had was its self-scheduling system. First, we had to make an event scheduler that at some predefined times, he was doing his work. But at the same time, what I did was that my Twitter account is fully automated.
+
+(5:16 - 5:29)
+I had to reply to tweets, posts, and other things, I had to engage. So, I had a dead account that he is managing now. And how is he managing it? There are some predefined things that he is taking with him.
+
+(5:30 - 5:44)
+And the second self-scheduling system that he is using is for complete management. So, whenever he is working, he thinks that I have to post this post after 30 minutes. So, he will schedule it.
+
+(5:44 - 5:57)
+And after 30 minutes, he will come back and complete all the work that he had scheduled. Similarly, we have fixed schedules like we have to make announcements for classes and so on. So, he is managing them.
+
+(5:58 - 6:12)
+He has complete Twitter. Then we have integrated Gmail and Calendar and using official APIs. So, in this whole system, we don't have any polling or anything else.
+
+(6:12 - 6:32)
+And as soon as we run it locally, we can take it to the cloud. So, as soon as we have any mail and anything comes, Google immediately fires an event and our employee gets it. And he starts the work and while using it, he completes the work.
+
+(6:33 - 6:57)
+The most interesting thing while making this was that I completed the bronze sphere by myself. Now, to complete the bronze sphere, all the things of the silver tier like Gmail, Calendar, Salesforce Link System, all these things, the agent has made them by himself while using spec-driven development. So, this Junior Junaid is completing the development by himself.
+
+(6:59 - 7:17)
+Now, if we come to Gmail, all the emails that are coming here, he is processing them by himself whether they are for AI or not, he is tagging them and so on. And after that, those who have to write any reply, they start from there. Okay.
+
+(7:17 - 7:26)
+Junior Junaid, in this, I can see processed not for AI. How did you tag this? Okay, sir. We have Gmail's MCP.
+
+(7:26 - 7:39)
+So, as soon as we get any email, first of all, our watcher gets an event from Google that an email has come. Then he gives it to Claude. Now, Claude decides whether he wants to process it or not.
+
+(7:40 - 7:55)
+When he starts processing, he adds the tag of the process. And after taking this decision whether to add it to the inbox or discard it, he adds a tag along with it of not for AI. He gives different tags to our AI employee and adds them to us.
+
+(7:56 - 8:02)
+In this way, you are saying that all the things in Gmail is the capability of tagging. Absolutely, sir. Okay.
+
+(8:03 - 8:09)
+In this way, we have Google Calendar. Now, different events are made in this. He is making all these for himself.
+
+(8:09 - 8:17)
+So, till now, the maximum things that I had were automated. From WhatsApp to social media. And along with that, different projects have to be made.
+
+(8:17 - 8:24)
+Till now, he has self-developed himself. And in the future, my opinion is that like in Hackathon 3, some things were pending. In 4, some things are pending.
+
+(8:24 - 8:40)
+There are book updates. So, all these things will be done by Junior Junaid for himself instead of me doing it for myself. As far as the structure is concerned, we have an obsidian vault here which is synced with Git for version management and all other things.
+
+(8:42 - 9:15)
+If we want to make any task or want to test anything, then we come here and add a new node in the draft. Add a task and we have to send an email now. Okay, it was in the draft.
+
+(9:16 - 9:29)
+We move it to the draft in the inbox. Now, as soon as we have it in the inbox, we had a file system running and an event was fired there. And our AI employee will start the task.
+
+(9:29 - 9:40)
+Now, when the AI employee will see it, he will start the task. If he has any question, he will bring it in pending to ask. If not, he will take it in approved and done.
+
+(9:41 - 9:57)
+And as soon as he brings it in done, we have a dashboard here. The dashboard will also be updated that we have a new task completed. And one more interesting thing, because I was making it for myself, I will also get a notification here.
+
+(9:57 - 10:11)
+So, if I open it here, I can see a lot of notifications here. These are all custom notifications. Whenever any work is completed, any custom, anything happens, then all these notifications are being fired.
+
+(10:11 - 10:20)
+Junaid, the dashboard is an HTML file that Cloud Code is maintaining. Sir, it is live syncing. Like, it is an HTML file.
+
+(10:21 - 10:30)
+And here we have a data watcher running. So, as soon as anything is updated, it is synced here as well. Okay.
+
+(10:32 - 10:52)
+Okay, as far as notifications are concerned, we had hooks in Cloud Code for this. And the hooks we have, they are looking at the notifications and as soon as any work is completed, if there are different notifications, they fire them. So, if I am doing any work, it will come and tell me that this work has been completed, this work is pending, and so on.
+
+(10:55 - 11:19)
+But, because we just started it, so it is using the RALF loop with it. So, if I come to Cloud and come to RALF loops, so here it has made a straight file. What is this RALF loop, Junaid? By default, when we run Cloud, Cloud can be stopped at any time.
+
+(11:20 - 11:29)
+Whether it is stopping to ask a question, or it stopped while working. There are many API errors. Now, we have a very simple while loop.
+
+(11:29 - 11:47)
+If we go to the core concept, what it does is, as soon as my agent stops work, here we have a completion promise. As long as this promise does not come to Cloud, it will keep rerunning it. Either these iterations get completed to the maximum, or this loop gets hit.
+
+(11:48 - 12:04)
+So, as soon as I start a work, what happens is, someone makes a file and starts the work. Now, as long as this completion does not meet, it will continue to do this work. So, we saw that this file was present a while ago, but now this file has been striked through.
+
+(12:06 - 12:42)
+Because this work has been completed. So, this loop, RALF loop, does it schedule as well, or it just keeps running until the work is completed? Sir, this is just a way to run Cloud continuously. The scheduling part of Cloud has its own functionality. 
+
+So, I have a fixed schedule here. If we complete the work, as soon as the file is present. Now, here are the timings of different classes, daily stand-ups, weekly CEO briefings, all these things are present here.
+
+(12:42 - 12:56)
+So, as soon as I start a session, it gets scheduled. In fact, if I turn off my Mac, I will restart it again and everything will start running again automatically. The second Cloud has a tool that can schedule anything at any time.
+
+(12:57 - 13:17)
+So, if I tell it to send an email after 2 hours, or if Cloud thinks that I have to do the work after some time, then it creates a schedule using that tool. And when the time is complete, it will also hit the schedule and complete the work. We just gave it the task of email.
+
+(13:18 - 13:23)
+So, let's do this. Let's go to Gmail. Let's see what happened here.
+
+(13:24 - 13:31)
+If any of you want to ask a question, please ask. Only I don't want to ask. You can ask anyone.
+
+(13:33 - 13:42)
+Everyone else, put your hands down. So that it looks like only the one who wants to ask a question has his hands up. We just told it to send an email.
+
+(13:43 - 14:01)
+It is showing that it has sent an email to another contact 2 minutes ago. So, it is working forward and it is also working backward. What I focused on was that Cloud, my AI employee, does not do any work on its own.
+
+(14:01 - 14:10)
+It runs different tasks on its own. And in all those sessions, it completes all the work. And then it just comes and tells whether the work is completed or not.
+
+(14:11 - 14:52)
+And using the same logic, it has done scheduling and such features using Cloud. It is a good thing. It means that something is progressing.
+
+(14:52 - 14:59)
+Do you have any questions? Two people have raised their hands. Okay. Assalam-o-Alaikum.
+
+(15:05 - 15:20)
+Assalam-o-Alaikum. I wanted to ask that when you ask it to send an email, does it automatically send it to you? Did you use an API or Anthropic for that? No. If we come back here and here you will see the file of MCP.
+
+(15:21 - 15:30)
+I am not opening the JSON file. I am opening the example file. Here I have an email connected to MCP in the name of Google Workspace.
+
+(15:31 - 15:42)
+This MCP server gives us the complete workspace of Google. We can configure all the things or features we want. In my case, Gmail is also configured.
+
+(15:43 - 16:04)
+And the other file also has a calendar. Yes, Nain? Yes, I understood that you have installed MCP. When it makes a plan that I have to send this email, it must be thinking about it.
+
+(16:05 - 16:11)
+Yes. Does it claud code? Yes. It does claud code.
+
+(16:12 - 16:25)
+If I want to see because it was a good question that there were many failure modes. I have done two things. First, if I assign some work to Claude, he does not work directly in my terminal but works in Tomex.
+
+(16:27 - 16:46)
+What is the benefit of this? I can connect it live and see what Junior Junaid was doing. I have this thing. What is Tmux? Normally, we run a process in the terminal If the terminal is closed, the process is also exited.
+
+(16:47 - 16:58)
+I wanted persistence so I used Tmux. When we run a session, it persists even between different iterations. Excellent.
+
+(17:01 - 17:12)
+Next. Assalamu Alaikum. Walaikum Assalam.
+
+(17:12 - 17:36)
+MashaAllah, you have made a good project. I want to say that when Claude's limit is over, have you set it? Do you know that Claude's session limit is over? Do you have a setting for that? You can see that in the slash usage. Right now, I have JLM with Claude.
+
+(17:37 - 18:01)
+If I open Claude, you can go to simple usage or you can go to CLI and see the usage. My purpose is that how can my employee check it? Do you have a setting for that? After the recent updates, Claude became self-aware. He knows when his session is going to reach.
+
+(18:03 - 18:18)
+Secondly, when we start a session, a junior doesn't work on his own. He gives background tasks and he reviews them. He doesn't let his limit end most of the time.
+
+(18:19 - 18:27)
+Secondly, if he is making an artifact, when it reaches, it will be compact and he can continue again. Thank you. I have another question.
+
+(18:27 - 18:37)
+You have made a good project. My background is in finance. How can I make it? It is a bit confusing.
+
+(18:37 - 18:47)
+Can you guide us on how to start? The main thing is problem solving. I will go to vouchers. There is a lot of code but I haven't opened any of them.
+
+(18:49 - 19:01)
+I have confidence on them based on the test. The main thing is when you start a project, don't just make it. Do a lot of counter questions and discussions.
+
+(19:02 - 19:12)
+When the discussion is complete, shift it from a file and start from there. I still have my specs. He has made everything using spec development.
+
+(19:14 - 19:23)
+I can check it from here. I will suggest you to use non-tech background. Ask a lot of questions and make initial PRD.
+
+(19:23 - 19:31)
+Then start working. How will you validate it? I want to know. He will test you.
+
+(19:33 - 19:38)
+Do a live testing. The first thing should be clear. What do you want to make? He made it 2-3 times.
+
+(19:39 - 19:46)
+I deleted it. The first thing is the requirement. Go to UI and discuss.
+
+(19:46 - 19:54)
+Take the document. Take it and discuss. When you get the clarity, then start working.
+
+(19:56 - 20:01)
+Okay. Thank you. Yes, Salman.
+
+(20:08 - 20:13)
+Greetings. Greetings. I have two questions.
+
+(20:13 - 20:24)
+You have made this employee using Cloud Code. It is Cloud's brain. Whatever Anthropic provides LLMs for.
+
+(20:25 - 20:38)
+It won't be vendor lock-in. Let's say we sell it to someone and he prefers to use another LLM. How can we switch? I see that you have used Cloud's agent.
+
+(20:39 - 20:52)
+This is my first question. Secondly, if we use other LLMs, won't it be cost-effective? Let's go one by one. It depends on your design.
+
+(20:52 - 21:00)
+I have opened my config. I have Cloud in default. But I have designed that I can switch it anytime.
+
+(21:00 - 21:07)
+I have to change the default. Gemini and Twin are working. I have planned the same thing in other places.
+
+(21:07 - 21:11)
+It is not vendor lock-in. You can do whatever you want. Gemini is fully open source.
+
+(21:13 - 21:25)
+What was your second question? The second question was related to the first question that you answered. It is up to you which LLM you want to use. You can use Gemini.
+
+(21:25 - 21:32)
+They have different prices. This is actually my agent. You can configure it.
+
+(21:32 - 21:49)
+The demo I just gave has Cloud in the front and GLM 4.5 in the back. It is up to you how you design it. Will you publish this code on a repo publicly? It will be available if we want to see it.
+
+(21:50 - 21:56)
+It is private now. It is available on Gator. As soon as we allow it, we can publish it.
+
+(21:57 - 22:03)
+It will be public. Everyone is bringing their creativity. Sounds good.
+
+(22:03 - 22:20)
+Makes sense. Abdulhan? Assalam-o-Alaikum to everyone. First thing we completed the bronze tier.
+
+(22:22 - 22:37)
+We did not go to UI. I created a Gmail voucher which was automatically running on the terminal. When the terminal closed, obviously all the services must have closed.
+
+(22:37 - 22:46)
+It is really good to see what you have done. You will learn a lot from it. The question was related to that one.
+
+(22:47 - 23:00)
+Is it an extension based on which if the terminal is closed, it keeps running? You have the package. You can install it. Let me run it.
+
+(23:00 - 23:06)
+Let me show you. No server is running in the background. We are using it to run it on the terminal.
+
+(23:07 - 23:22)
+You can install it. You may not need it because you can run it in a sub-process. How will you design it? Second thing we made one which was our assistant.
+
+(23:22 - 23:41)
+You made Junior Junaid. If I make it on my side, I will make Junior Hanan. Can we design a system which is multi-user and we can make it live and the multi-users can sign up and give their Google and Facebook details.
+
+(23:44 - 24:02)
+Thank you. We are going towards multi-users and producing in different varieties. Of course.
+
+(24:03 - 24:16)
+You can make a good FT and sell it. You can deploy it in a company and start writing good code and design solutions. Everything is possible.
+
+(24:16 - 24:22)
+You are talking about one side. Yes, Asif. Greetings.
+
+(24:24 - 24:29)
+Greetings. I have a question and a concern. Let's talk about the question and the concern later.
+
+(24:30 - 24:47)
+The question is related to Hanan. How did you handle concurrency? You are using Temux. Does your system process multiple tasks at a time or one by one? I did it in Python.
+
+(24:47 - 25:06)
+In Python, it makes a sub-session and there is a claud which is attached to it. In concurrency, multiple tasks can be scheduled. How did you deal with it? All the tasks that I drop in the inbox will start in parallel.
+
+(25:06 - 25:16)
+There is no sequential or blocker. Currently, it uses thread pooling. You can also design it asynchronously and it will start working.
+
+(25:18 - 25:29)
+Another major problem that I identified later was that many processes were not getting killed. You can design it in this way. There are many options.
+
+(25:30 - 25:42)
+I have a combination of hooks and watchers. When something is complete or gets stuck for a long time, it is auto-dealt. It depends on how you plan the cleanup.
+
+(25:47 - 26:02)
+I have the same question. Does Temux make multiple instances to deal with multiple processes and how do you release it? You know that the process will be completed. You have to release it too.
+
+(26:03 - 26:22)
+When the RALF loop is completed, whether the stop condition is met or the iterations are completed, it creates the claud session and also cleans Temux and manages the files. The first wall is RALF. For some reason, RALF also gets stuck there.
+
+(26:23 - 26:38)
+Watchers also do self-cleanup. Both are happening here. Finally, when I started my project, I open-sourced it on Github.
+
+(26:40 - 26:53)
+Will you open-source your code so that other people can benefit from it? Yes. When the hackathon is completed, everyone has their own GCN. In my case, I open-source it when the hackathon time is complete.
+
+(26:54 - 27:04)
+For example, your hackathon is open-sourced 2 weeks later. When this is completed, it will also be open-sourced. Let's talk about the concern.
+
+(27:05 - 27:22)
+My main concern is how to manage when the teacher and student are in the same competition. They are in the same line. if there is no one here? We can't compete with them.
+
+(27:24 - 27:37)
+The main purpose of a hackathon is to learn from others. I have learned a lot from this perspective before the hackathon. The main purpose is to learn from each other.
+
+(27:39 - 27:47)
+After learning from each other, we can improve each other. Let me give an example. A 400 students shared their hackathon demo.
+
+(27:49 - 27:56)
+I made an issue in my to-do list. After looking at it, I decided to implement it. It is like self-exchange.
+
+(27:56 - 28:05)
+Everyone is sharing their work. It can be possible and we can make it. It's not just about competition.
+
+(28:06 - 28:20)
+We have to learn how to make AI employees and digital FTs. I am making it for the sake of the hackathon. I am monetizing it I am completing the main purpose of the hackathon.
+
+(28:52 - 29:06)
+I am completing the main purpose of the hackathon. Next. Next.
+
+(29:24 - 29:25)
+Next.
+
+(This file is longer than 30 minutes. Go Unlimited at TurboScribe.ai to transcribe files up to 10 hours long.)

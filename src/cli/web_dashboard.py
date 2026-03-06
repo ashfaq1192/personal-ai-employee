@@ -697,6 +697,26 @@ def api_odoo_summary(_body: dict = {}) -> dict:
         return {"status": "error", "connected": False, "message": str(e)[:200]}
 
 
+def api_calendar_today() -> list:
+    """Return today's calendar events."""
+    try:
+        from src.mcp_servers.google_calendar_client import GoogleCalendarClient
+        cal = GoogleCalendarClient(config.gmail_credentials_path)
+        return cal.get_todays_schedule()
+    except Exception as e:
+        return [{"error": str(e)[:100]}]
+
+
+def api_calendar_upcoming() -> list:
+    """Return upcoming calendar events (next 10)."""
+    try:
+        from src.mcp_servers.google_calendar_client import GoogleCalendarClient
+        cal = GoogleCalendarClient(config.gmail_credentials_path)
+        return cal.list_upcoming_events(max_results=10)
+    except Exception as e:
+        return [{"error": str(e)[:100]}]
+
+
 def api_briefings() -> list:
     """List available CEO briefings, newest first."""
     folder = vault / "Briefings"
@@ -846,6 +866,128 @@ def api_reject(body: dict) -> dict:
     return {"status": "rejected"}
 
 
+def api_lead_qualify(body: dict) -> dict:
+    """Run BANT lead qualification and return score + tier.
+
+    Body: {name, company, email, phone, budget, authority, need, timeline}
+    Maps free-text form fields to Lead dataclass fields.
+    """
+    required = ["name", "company", "email"]
+    missing = [k for k in required if not body.get(k, "").strip()]
+    if missing:
+        return {"status": "error", "message": f"Missing fields: {', '.join(missing)}"}
+
+    try:
+        from src.orchestrator.lead_qualifier import Lead, LeadQualifier
+
+        # Parse budget string → float
+        budget_str = body.get("budget", "").lower()
+        budget_map = {
+            "under $1,000": 500.0,
+            "$1,000 – $5,000": 3000.0,
+            "$5,000 – $20,000": 12500.0,
+            "$20,000 – $100,000": 60000.0,
+            "over $100,000": 150000.0,
+        }
+        budget = budget_map.get(budget_str, 0.0)
+
+        # Parse authority → is_decision_maker
+        authority = body.get("authority", "").lower()
+        is_dm = "final" in authority or "decision" in authority
+
+        # Parse timeline → days
+        timeline_str = body.get("timeline", "").lower()
+        timeline_days = 90
+        if "immediately" in timeline_str:
+            timeline_days = 7
+        elif "1 month" in timeline_str:
+            timeline_days = 30
+        elif "1 – 3" in timeline_str or "1-3" in timeline_str:
+            timeline_days = 60
+        elif "3 – 6" in timeline_str or "3-6" in timeline_str:
+            timeline_days = 120
+        elif "over 6" in timeline_str or "exploring" in timeline_str:
+            timeline_days = 180
+
+        lead = Lead(
+            name=body.get("name", "").strip(),
+            email=body.get("email", "").strip(),
+            company=body.get("company", "").strip(),
+            phone=body.get("phone", "").strip(),
+            budget=budget,
+            is_decision_maker=is_dm,
+            timeline_days=timeline_days,
+            notes=body.get("need", "").strip(),
+            source="web_dashboard",
+        )
+        qualifier = LeadQualifier(config)
+        result = qualifier.qualify(lead)
+
+        tier = result.get("score", "cold")
+        score_pts = (3 if tier == "hot" else (2 if tier == "warm" else 1))
+        summary_map = {
+            "hot": f"High-value opportunity. Budget confirmed ({body.get('budget','')}), decision maker, urgent timeline ({timeline_days}d).",
+            "warm": f"Promising lead with partial BANT match. Budget: {body.get('budget','')} | Timeline: {timeline_days}d.",
+            "cold": "Early-stage lead. Nurture with content and follow up in 2–4 weeks.",
+        }
+        next_action_map = {
+            "hot": "Book a discovery call within 24 hours.",
+            "warm": "Send tailored case study + schedule follow-up call within 48h.",
+            "cold": "Add to nurture sequence, follow up in 2 weeks.",
+        }
+        audit.log("lead_qualify", "web_dashboard", lead.email,
+                  parameters={"company": lead.company, "tier": tier, "score": score_pts},
+                  result="success")
+        return {
+            "status": "ok",
+            "tier": tier,
+            "score": score_pts,
+            "summary": summary_map[tier],
+            "next_action": next_action_map[tier],
+            "odoo_id": result.get("odoo_id"),
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)[:300]}
+
+
+def api_contacts_memory() -> list:
+    """Return all known contacts from contact memory, newest interaction first."""
+    try:
+        from src.orchestrator.contact_memory import ContactMemory
+        mem = ContactMemory(vault)
+        return mem.all_contacts()
+    except Exception as e:
+        return [{"error": str(e)[:200]}]
+
+
+def api_leads_list(_body: dict = {}) -> list:
+    """List recent qualified leads from the vault."""
+    folder = vault / "Leads"
+    if not folder.exists():
+        return []
+    items = []
+    for f in sorted(folder.glob("LEAD_*.md"), reverse=True)[:20]:
+        text = f.read_text(encoding="utf-8", errors="ignore")
+        fm: dict = {}
+        m = re.match(r"^---\s*\n(.*?)\n---", text, re.DOTALL)
+        if m:
+            for line in m.group(1).splitlines():
+                if ":" in line:
+                    k, _, v = line.partition(":")
+                    fm[k.strip()] = v.strip().strip('"').strip("'")
+        tier = fm.get("tier", fm.get("score", "cold"))  # score field stores hot/warm/cold
+        items.append({
+            "filename": f.name,
+            "name": fm.get("name", ""),
+            "company": fm.get("company", ""),
+            "email": fm.get("email", ""),
+            "score": "3" if tier == "hot" else ("2" if tier == "warm" else "1"),
+            "tier": tier,
+            "qualified_at": fm.get("created", fm.get("qualified_at", "")),
+        })
+    return items
+
+
 # ─── HTTP Handler ─────────────────────────────────────────────────────────────
 
 POST = {
@@ -863,6 +1005,7 @@ POST = {
     "/api/approve":             api_approve,
     "/api/reject":              api_reject,
     "/api/action/approve":      api_approve,
+    "/api/lead/qualify":        api_lead_qualify,
 }
 
 
@@ -884,6 +1027,10 @@ class Handler(BaseHTTPRequestHandler):
             "/api/logs":              lambda: audit.get_recent(40),
             "/api/briefings":         lambda: api_briefings(),
             "/api/whatsapp/status":   lambda: api_whatsapp_scan(),
+            "/api/calendar/today":    lambda: api_calendar_today(),
+            "/api/calendar/upcoming": lambda: api_calendar_upcoming(),
+            "/api/leads":             lambda: api_leads_list(),
+            "/api/contacts":          lambda: api_contacts_memory(),
         }
         if path == "/":
             _html_file = Path(__file__).parent / "dashboard.html"

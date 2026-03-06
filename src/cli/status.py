@@ -12,20 +12,35 @@ from src.core.logger import AuditLogger
 
 
 def _check_process(name: str) -> str:
-    """Check if a process is running via PM2."""
+    """Check if a named tmux window is running."""
     try:
         result = subprocess.run(
-            ["pm2", "jlist"], capture_output=True, text=True, timeout=5
+            ["tmux", "list-windows", "-t", "ai-employee", "-F", "#{window_name}:#{window_active}"],
+            capture_output=True, text=True, timeout=5,
         )
         if result.returncode == 0:
-            processes = json.loads(result.stdout)
-            for proc in processes:
-                if proc.get("name") == name:
-                    status = proc.get("pm2_env", {}).get("status", "unknown")
-                    return status
-        return "not found"
-    except (FileNotFoundError, json.JSONDecodeError, subprocess.TimeoutExpired):
-        return "pm2 unavailable"
+            for line in result.stdout.splitlines():
+                win_name, _, active = line.partition(":")
+                if win_name == name:
+                    return "running"
+            return "not running"
+        return "tmux session not found"
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return "tmux unavailable"
+
+
+def _tmux_sessions() -> list[str]:
+    """Return list of active tmux sessions."""
+    try:
+        result = subprocess.run(
+            ["tmux", "list-sessions", "-F", "#{session_name}"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0:
+            return [s for s in result.stdout.splitlines() if s]
+        return []
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return []
 
 
 def _count_files(directory: Path) -> int:
@@ -57,11 +72,19 @@ def main() -> None:
     print(f"  Vault OK: {'Yes' if vault_exists else 'No — run init_vault'}")
     print()
 
-    # Process status
+    # Tmux sessions
+    sessions = _tmux_sessions()
+    if sessions:
+        print(f"  Tmux Sessions: {', '.join(sessions)}")
+    else:
+        print("  Tmux Sessions: none (run scripts/start.sh to launch)")
+    print()
+
+    # Process status (tmux windows inside ai-employee session)
     print("  Processes:")
-    for name in ["orchestrator", "cloud-agent"]:
+    for name in ["orchestrator", "gmail", "whatsapp"]:
         status = _check_process(name)
-        icon = "+" if status == "online" else "-"
+        icon = "+" if status == "running" else "-"
         print(f"    [{icon}] {name}: {status}")
     print()
 
@@ -90,6 +113,28 @@ def main() -> None:
     else:
         print("  Recent Errors: None")
     print()
+
+    # Today's calendar
+    if not config.dev_mode:
+        try:
+            from src.mcp_servers.google_calendar_client import GoogleCalendarClient
+            cal = GoogleCalendarClient(config.gmail_credentials_path)
+            events = cal.get_todays_schedule()
+            print("  Today's Calendar:")
+            if events:
+                for e in events:
+                    start = e.get("start", "")
+                    if start:
+                        try:
+                            start = datetime.fromisoformat(start).strftime("%H:%M")
+                        except ValueError:
+                            pass
+                    print(f"    {start:5}  {e.get('summary', '(No title)')}")
+            else:
+                print("    (no events today)")
+            print()
+        except Exception:
+            pass
 
     # GCP VM status (if configured)
     try:

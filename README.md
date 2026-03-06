@@ -41,9 +41,22 @@ cp .env.example .env
 # 3. Initialize the Obsidian vault
 uv run python main.py --init-vault
 
-# 4. Start the web dashboard (runs on http://localhost:8080)
+# 4. Initialize the Obsidian vault
+uv run python main.py --init-vault
+
+# 5. Start ALL services in Tmux (survives terminal close)
+bash scripts/start.sh
+
+# --- OR run individual services manually ---
+# Dashboard only (http://localhost:8080)
 uv run python main.py --dashboard
+# WhatsApp webhook (port 8081)
+uv run python src/cli/whatsapp_webhook.py
 ```
+
+> **Tip — Tmux persistence:** `scripts/start.sh` launches everything inside a named Tmux session
+> (`ai-employee`). Close the terminal anytime — the agent keeps running. Reconnect with:
+> `tmux attach -t ai-employee`
 
 ---
 

@@ -9,6 +9,7 @@ import subprocess
 import sys
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from watchdog.events import FileCreatedEvent, FileSystemEventHandler
@@ -36,6 +37,9 @@ class _NeedsActionHandler(FileSystemEventHandler):
         path = Path(event.src_path)
         if path.suffix == ".md":
             log.info("New item in Needs_Action: %s", path.name)
+            # Check if it's an email that contains a meeting request
+            if path.name.startswith("EMAIL_"):
+                self._orch._task_pool.submit(self._orch._check_meeting_request, path)
             self._orch.trigger_reasoning(path.name)
 
 
@@ -54,6 +58,11 @@ class Orchestrator:
         )
         self._observer = Observer()
         self._running = False
+        # Bounded thread pool: max 4 concurrent reasoning tasks
+        self._task_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="ai-task")
+        # Multi-agent coordinator
+        from src.agents.agent_coordinator import AgentCoordinator
+        self._agent_coordinator = AgentCoordinator(self.config)
 
     def _dispatch_action(self, path: Path, action_params: dict) -> None:
         """Dispatch an approved action to the appropriate MCP server."""
@@ -108,14 +117,20 @@ class Orchestrator:
                 from src.mcp_servers.instagram_client import InstagramClient
                 client = InstagramClient(self.config)
                 client.post(
-                    ig_user_id=self.config.instagram_user_id,
+                    ig_user_id=self.config.ig_user_id,
                     image_url=action_params.get("image_url", ""),
                     caption=body_text or action_params.get("caption", ""),
                 )
 
             elif action == "twitter_post":
                 from src.mcp_servers.twitter_client import TwitterClient
-                client = TwitterClient(self.config)
+                client = TwitterClient(
+                    api_key=self.config.twitter_api_key,
+                    api_secret=self.config.twitter_api_secret,
+                    access_token=self.config.twitter_access_token,
+                    access_secret=self.config.twitter_access_secret,
+                    dry_run=self.config.dry_run,
+                )
                 client.post(text=body_text or action_params.get("text", ""))
 
             elif action in ("invoice", "create_invoice"):
@@ -169,14 +184,31 @@ class Orchestrator:
         return proc
 
     def trigger_reasoning(self, filename: str | None = None) -> None:
-        """Trigger Claude Code reasoning on vault items."""
+        """Trigger Claude Code reasoning on vault items — runs in thread pool for concurrency."""
+        self._task_pool.submit(self._run_reasoning_task, filename)
+
+    def _run_reasoning_task(self, filename: str | None) -> None:
+        """Execute a reasoning task in a worker thread (bounded concurrency)."""
         try:
             cmd = [sys.executable, "src/cli/trigger_reasoning.py"]
             if filename:
                 cmd.extend(["--file", filename])
-            subprocess.Popen(cmd, cwd=str(Path(__file__).parent.parent.parent))
+            proc = subprocess.Popen(
+                cmd,
+                cwd=str(Path(__file__).parent.parent.parent),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            log.info("Reasoning task started (PID %d) for file: %s", proc.pid, filename or "all")
+            # Wait with timeout to prevent zombie processes
+            try:
+                proc.wait(timeout=600)  # 10 minute max per task
+            except subprocess.TimeoutExpired:
+                log.warning("Reasoning task (PID %d) timed out — killing", proc.pid)
+                proc.kill()
+                proc.wait()
         except Exception:
-            log.exception("Failed to trigger reasoning")
+            log.exception("Reasoning task failed for file: %s", filename)
 
     def start(self) -> None:
         """Start the orchestrator and all components."""
@@ -211,6 +243,21 @@ class Orchestrator:
             self._trigger_weekly_briefing,
             "0 23 sun",  # Sunday 23:00 → Monday briefing
         )
+        self.scheduler.add_scheduled_task(
+            "proactive_followups",
+            self._run_followup_engine,
+            "0 9 *",  # daily at 09:00
+        )
+        self.scheduler.add_scheduled_task(
+            "budget_check",
+            self._run_budget_check,
+            "0 7 *",  # daily at 07:00
+        )
+        self.scheduler.add_scheduled_task(
+            "content_calendar",
+            self._generate_content_calendar,
+            "0 8 sun",  # Sunday 08:00 — plan the week's social posts
+        )
         self.scheduler.add_interval_task(
             "ralph_batch_check",
             self._check_ralph_batch,
@@ -220,6 +267,8 @@ class Orchestrator:
 
         # Start approval watcher
         self.approval_watcher.start()
+        # Start multi-agent coordinator
+        self._agent_coordinator.start()
 
         # Watch /Needs_Action/ for new files
         needs_action_dir = self.vault_path / "Needs_Action"
@@ -247,23 +296,90 @@ class Orchestrator:
             self.stop()
 
     def _trigger_weekly_briefing(self) -> None:
-        """Trigger Claude Code to generate the weekly CEO briefing."""
+        """Generate the weekly CEO briefing (+ performance review), then deliver."""
+        # Performance review runs first so its data can be included in the briefing
         try:
-            log.info("Triggering weekly CEO briefing generation")
-            cmd = [
-                sys.executable,
-                "src/cli/trigger_reasoning.py",
-                "--skill", "generate-briefing",
-            ]
-            subprocess.Popen(cmd, cwd=str(Path(__file__).parent.parent.parent))
+            from src.orchestrator.performance_review import PerformanceReview
+            review = PerformanceReview(self.config)
+            review_path = review.generate()
+            log.info("Performance review generated: %s", review_path.name)
+        except Exception:
+            log.exception("Performance review failed")
+
+        try:
+            log.info("Generating weekly CEO briefing")
+            from scripts.generate_ceo_briefing import generate_briefing
+            from datetime import date
+
+            briefing_path = generate_briefing(
+                vault=self.vault_path,
+                dry_run=self.config.dev_mode,
+            )
+
+            if self.config.dev_mode:
+                log.info("[DEV_MODE] Briefing generated (dry-run): %s", briefing_path)
+                return
+
+            # Read the generated briefing content
+            if briefing_path.exists():
+                content = briefing_path.read_text(encoding="utf-8")
+                # Strip frontmatter for the message body
+                import re
+                body = re.sub(r"^---.*?---\s*", "", content, flags=re.DOTALL).strip()
+                subject = f"AI Employee — Weekly CEO Briefing {date.today().strftime('%b %d, %Y')}"
+
+                # Send via email
+                try:
+                    from src.mcp_servers.gmail_service import GmailService
+                    svc = GmailService(self.config.gmail_credentials_path)
+                    svc.send_email(to="me", subject=subject, body=body[:4000])
+                    log.info("CEO briefing emailed")
+                except Exception:
+                    log.exception("Failed to email CEO briefing")
+
+                # Send summary via WhatsApp (first 500 chars + budget summary)
+                try:
+                    from src.mcp_servers.whatsapp_client import WhatsAppClient
+                    from src.orchestrator.budget_monitor import BudgetMonitor
+                    wa = WhatsAppClient(self.config)
+                    summary_lines = [l for l in body.splitlines() if l.strip()][:12]
+                    budget_summary = ""
+                    try:
+                        budget_summary = "\n\n" + BudgetMonitor(self.config).weekly_summary()
+                    except Exception:
+                        pass
+                    wa_msg = (
+                        f"*Weekly CEO Briefing — {date.today().strftime('%b %d')}*\n\n"
+                        + "\n".join(summary_lines)
+                        + budget_summary
+                    )
+                    # Send to the configured WhatsApp business number (self-notification)
+                    if self.config.whatsapp_phone_number_id:
+                        wa.send_message(to=self.config.whatsapp_phone_number_id, body=wa_msg[:1000])
+                        log.info("CEO briefing sent via WhatsApp")
+                except Exception:
+                    log.exception("Failed to WhatsApp CEO briefing")
+
             self.audit.log(
-                action_type="system",
+                action_type="ceo_briefing",
                 actor="orchestrator",
                 target="weekly_briefing",
-                parameters={"skill": "generate-briefing"},
+                parameters={"path": str(briefing_path)},
+                result="success",
             )
         except Exception:
-            log.exception("Failed to trigger weekly briefing")
+            log.exception("Failed to generate weekly briefing")
+
+    def _check_meeting_request(self, email_path: Path) -> None:
+        """Check if an email is a meeting request and create approval if so."""
+        try:
+            from src.orchestrator.meeting_scheduler import MeetingScheduler
+            scheduler = MeetingScheduler(self.config)
+            result = scheduler.scan_email_file(email_path)
+            if result:
+                log.info("Meeting approval created: %s", result.name)
+        except Exception:
+            log.exception("Meeting request check failed for %s", email_path.name)
 
     def _check_ralph_batch(self) -> None:
         """If Needs_Action has more items than threshold, use Ralph loop for batch processing."""
@@ -283,6 +399,36 @@ class Orchestrator:
         except Exception:
             log.exception("Ralph batch check failed")
 
+    def _run_budget_check(self) -> None:
+        """Daily: check Odoo spend vs budget thresholds and alert on breaches."""
+        try:
+            from src.orchestrator.budget_monitor import BudgetMonitor
+            monitor = BudgetMonitor(self.config)
+            breaches = monitor.check_and_alert()
+            if breaches:
+                log.warning("Budget breaches detected: %s", breaches)
+        except Exception:
+            log.exception("Budget check failed")
+
+    def _run_followup_engine(self) -> None:
+        """Daily: scan Done/ for stale outbound tasks and queue follow-ups."""
+        try:
+            from src.orchestrator.followup_engine import FollowUpEngine
+            engine = FollowUpEngine(self.config)
+            results = engine.run()
+            log.info("Follow-up engine: %d follow-up(s) queued", len(results))
+        except Exception:
+            log.exception("Follow-up engine failed")
+
+    def _generate_content_calendar(self) -> None:
+        """Sunday: generate a week's social media content calendar."""
+        try:
+            from src.orchestrator.content_calendar import ContentCalendar
+            calendar = ContentCalendar(self.config, scheduler=self.scheduler)
+            calendar.generate_and_schedule()
+        except Exception:
+            log.exception("Content calendar generation failed")
+
     def _update_dashboard(self) -> None:
         """Update Dashboard.md with current counts."""
         try:
@@ -294,9 +440,11 @@ class Orchestrator:
     def stop(self) -> None:
         """Gracefully stop all components."""
         self._running = False
+        self._task_pool.shutdown(wait=False, cancel_futures=True)
         self._observer.stop()
         self._observer.join(timeout=5)
         self.approval_watcher.stop()
+        self._agent_coordinator.stop()
         self.scheduler.stop()
         self.health_monitor.stop_all()
         self.audit.log(

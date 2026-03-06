@@ -102,6 +102,12 @@ class Config:
             os.environ.get("RALPH_BATCH_THRESHOLD", "3")
         )
 
+        # OpenAI (for Whisper voice transcription)
+        self.openai_api_key: str = os.environ.get("OPENAI_API_KEY", "")
+
+        # Model routing (see model_config.yaml)
+        self.model_profile: str = os.environ.get("MODEL_PROFILE", "claude")
+
     def validate(self) -> list[str]:
         """Return list of validation errors (empty = valid)."""
         errors: list[str] = []

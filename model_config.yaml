@@ -1,0 +1,57 @@
+# AI Employee — Model Configuration
+# Switch the underlying LLM without changing any code.
+# Set the active profile name in the environment: MODEL_PROFILE=<name>
+# Default: claude (Anthropic Claude Sonnet)
+
+active_profile: claude
+
+profiles:
+  # Anthropic Claude — default, highest quality
+  claude:
+    provider: anthropic
+    model: claude-sonnet-4-6
+    api_key_env: ANTHROPIC_API_KEY
+    max_tokens: 8096
+    temperature: 0.3
+
+  # Claude Opus — highest capability, slower/more expensive
+  claude-opus:
+    provider: anthropic
+    model: claude-opus-4-6
+    api_key_env: ANTHROPIC_API_KEY
+    max_tokens: 8096
+    temperature: 0.2
+
+  # Google Gemini — free tier available, good for high volume
+  gemini:
+    provider: google
+    model: gemini-2.0-flash
+    api_key_env: GOOGLE_API_KEY
+    max_tokens: 8096
+    temperature: 0.3
+
+  # GLM (Zhipu AI) — cost-effective for background tasks
+  glm:
+    provider: zhipu
+    model: glm-4-flash
+    api_key_env: GLM_API_KEY
+    max_tokens: 4096
+    temperature: 0.3
+
+  # OpenAI GPT-4o — alternative for specific integrations
+  gpt4o:
+    provider: openai
+    model: gpt-4o
+    api_key_env: OPENAI_API_KEY
+    max_tokens: 4096
+    temperature: 0.3
+
+# Role-based model routing
+# Different roles can use different models to optimize cost vs quality
+role_routing:
+  orchestrator: claude          # main decision-making: best model
+  sub_agent: claude             # task execution
+  email_classifier: gemini      # high volume, cost-sensitive
+  social_writer: claude         # creative output: best model
+  summarizer: gemini            # background summarization
+  scheduler: claude             # scheduling decisions

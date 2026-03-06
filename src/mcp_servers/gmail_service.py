@@ -87,6 +87,94 @@ class GmailService:
         result = service.users().drafts().create(userId="me", body={"message": {"raw": raw}}).execute()
         return {"draft_id": result.get("id", ""), "status": "drafted"}
 
+    def ensure_label(self, label_name: str) -> str:
+        """Get existing Gmail label ID or create it. Returns label ID."""
+        service = self._get_service()
+        result = service.users().labels().list(userId="me").execute()
+        for label in result.get("labels", []):
+            if label["name"] == label_name:
+                return label["id"]
+        created = service.users().labels().create(
+            userId="me",
+            body={
+                "name": label_name,
+                "labelListVisibility": "labelShow",
+                "messageListVisibility": "show",
+            },
+        ).execute()
+        log.info("Created Gmail label: %s (id=%s)", label_name, created["id"])
+        return created["id"]
+
+    def apply_label(self, message_id: str, label_name: str) -> None:
+        """Apply a label to a Gmail message by name."""
+        service = self._get_service()
+        label_id = self.ensure_label(label_name)
+        service.users().messages().modify(
+            userId="me",
+            id=message_id,
+            body={"addLabelIds": [label_id]},
+        ).execute()
+        log.info("Applied label '%s' to message %s", label_name, message_id)
+
+    def remove_label(self, message_id: str, label_name: str) -> None:
+        """Remove a label from a Gmail message by name."""
+        service = self._get_service()
+        result = service.users().labels().list(userId="me").execute()
+        label_id = next(
+            (l["id"] for l in result.get("labels", []) if l["name"] == label_name),
+            None,
+        )
+        if label_id:
+            service.users().messages().modify(
+                userId="me",
+                id=message_id,
+                body={"removeLabelIds": [label_id]},
+            ).execute()
+            log.info("Removed label '%s' from message %s", label_name, message_id)
+
+    def get_full_message(self, message_id: str) -> dict[str, Any]:
+        """Fetch full message payload including parts and attachment metadata."""
+        service = self._get_service()
+        return service.users().messages().get(userId="me", id=message_id, format="full").execute()
+
+    def download_attachment(self, message_id: str, attachment_id: str) -> bytes:
+        """Download raw attachment bytes from Gmail."""
+        service = self._get_service()
+        result = service.users().messages().attachments().get(
+            userId="me", messageId=message_id, id=attachment_id
+        ).execute()
+        import base64
+        data = result.get("data", "")
+        return base64.urlsafe_b64decode(data + "==")
+
+    def list_attachments(self, message_id: str) -> list[dict[str, Any]]:
+        """Return attachment metadata (filename, mimeType, attachmentId) for a message."""
+        try:
+            full = self.get_full_message(message_id)
+        except Exception:
+            return []
+
+        attachments: list[dict[str, Any]] = []
+
+        def _walk(parts: list) -> None:
+            for part in parts:
+                filename = part.get("filename", "")
+                body = part.get("body", {})
+                att_id = body.get("attachmentId")
+                if filename and att_id:
+                    attachments.append({
+                        "filename": filename,
+                        "mime_type": part.get("mimeType", "application/octet-stream"),
+                        "attachment_id": att_id,
+                        "size": body.get("size", 0),
+                    })
+                if part.get("parts"):
+                    _walk(part["parts"])
+
+        payload = full.get("payload", {})
+        _walk(payload.get("parts", []))
+        return attachments
+
     @with_retry(max_attempts=2, base_delay=1.0, max_delay=10.0)
     def search_email(self, query: str, max_results: int = 10) -> list[dict[str, Any]]:
         """Search Gmail inbox."""

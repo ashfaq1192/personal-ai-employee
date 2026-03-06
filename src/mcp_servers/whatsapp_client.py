@@ -68,6 +68,28 @@ class WhatsAppClient:
             )
             return {"status": "sent", "message_id": message_id}
 
+    def download_media(self, media_id: str) -> bytes:
+        """Download a media file (audio, image, video) by its WhatsApp media_id.
+
+        Steps:
+          1. GET /{media_id} → {"url": "https://..."} (the actual download URL)
+          2. GET that URL with the same Bearer token → raw bytes
+        """
+        headers = {"Authorization": f"Bearer {self._access_token}"}
+        with httpx.Client() as client:
+            # Step 1 — get download URL
+            meta = client.get(
+                f"{GRAPH_API_BASE}/{media_id}", headers=headers, timeout=10
+            )
+            meta.raise_for_status()
+            url = meta.json().get("url", "")
+            if not url:
+                raise ValueError(f"No URL returned for media_id {media_id}")
+            # Step 2 — download raw bytes
+            resp = client.get(url, headers=headers, timeout=60)
+            resp.raise_for_status()
+            return resp.content
+
     @with_retry(max_attempts=2, base_delay=3.0, max_delay=30.0)
     def mark_as_read(self, message_id: str) -> dict[str, Any]:
         """Send a read receipt for an inbound message."""

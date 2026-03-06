@@ -1,0 +1,179 @@
+(Transcribed by TurboScribe.ai. Go Unlimited to remove this message.)
+
+I still live him. Bismillah, Rahman Rahim. The good news is, we saw that in Makaton Zero, we were making general agents.
+
+Everyone is working on it. Many people have made it, many people are making it. Now the problem was, how to go from general agent to custom agent and what will be the process of it and how will we make this transition, how will it take place? Okay, I kept thinking a lot about how this will happen.
+
+Then we wrote chapter 1 of the book. Junaid was calling it phase 1 and phase 2. Phase 1 and phase 2. I am lying on the bed, that's why I have turned off the camera. I don't want to leave the bed.
+
+Okay, so it was phase 1 and phase 2. So, it was clear from part 1 and part 2 that these are two different things. Vania, please shed some light on the process. Yes.
+
+When we were talking earlier, we saw that in phase 1, as we have been using so far, there were general agents, which we used in a lot of hackathons, which we talked about. Now, these general agents were coming to the market. We said that we would be making two types of agents.
+
+First of all, we would be making it through general agents, which we had also seen in hackathons. And we would be making custom agents, which we would be using some framework. For now, we have seen that we are using OpenAgent SDK.
+
+The niche market of both comes in a different way. In the case of general agents, the user is basically the developer. Now, the developer interacts with the general agent.
+
+And then whatever he has to make, he develops a prototype of it. And he runs it and checks it with himself. Now, the scenario here was that if you have a non-technical person, how will he interact with the solution that we want to give? The process of automation that we want to give to the user.
+
+So, for that, basically, while using the general agent, we should transition from the general agent to the custom agent. The custom agent is that you have a deployed solution. The user will come, whether he is technical or non-technical, he will interact with it.
+
+And whatever benefits he has, he will be taking from his custom agent. Now, one thing was very important here for us and for all our students. That we have now told the general agent and the custom agent two different paths.
+
+That for which scenario we will be using the general agent and for which scenario we will be using the custom agent. So, now we have done the transition in such a way that we said that the first thing is that while using the general agent, we will be making our products. So, it will be like this that whatever we have to make, the first prototype of that which we will be developing, we will be developing through the general agent.
+
+So, in the first step, the phase of prototyping, we achieved it through the general agent. Then, while using the general agent, we also went towards the transition of the custom agent. And whatever the phase of its deployment was, and whatever we did, we are doing it through the general agent.
+
+But who are we transitioning now? We will be doing it through the custom agent or we will be doing it through the framework that we are using. So, this was the basic difference that our audience will also be different in both the cases. And how we will be moving from point A to point B rather than considering both a separate path.
+
+Yes, sir. Okay, Junaid, please open the chapter of the book, chapter 1. In its section 1, part 2, this maturity model is discussed. Yes, sir.
+
+Come down, its section 2, agent maturity model. Okay, first of all, Junaid bhai, don't make it long because this is not a class. Please tell the difference between the general agent and custom agent.
+
+And what is this agent maturity model? Yes, sir. When we are talking about the general agent, we are saying that we have a pre-built agent. And why is it general? Because it is working in every domain.
+
+The best example for this is CloudFord, which we are using for software development. We are also using it for the book in front of us. When we are talking about the custom agent, we are saying that we have a very specialized task.
+
+For example, it can be a task of customer management. Or it can be a task to plan the lesson of the book. And around that task or problem or goal, we are designing our complete agent and agent's harness.
+
+So we call it custom agent. When we are talking about agent maturity model, we have to bring the solution of this problem that how to make custom agents. And while making custom agents, what would be the role of the general agent? So we would be using the general agent.
+
+And after that, we have a complete incubation process where we would be working as a director and designing our custom agents through the general agent. Yes, sir. So what is this maturity model? When we are talking about maturity model, when we talk about maturing anything, it does not mature suddenly, it has many stages.
+
+We start from stage 1. For example, if we talk about a small student, where did his journey start from? From class 1. And where does he mature or graduate? When he is completing his graduation. So in the same way, while using the general agent, we would be solving different types of problems on different points of our custom agent. For example, first we have to understand how to do planning.
+
+What are the requirements and tools that are being used there. Then we would be planning and making the thing step by step. So we would be maturing step by step.
+
+It would not be that the general agent is given a prompt and the custom agent comes from the manufacturer. In fact, there would be a whole incubation process in which we would be maturing our custom agent step by step. Excellent.
+
+Does anyone have any questions on this topic? If you have any questions, please raise your hand. Assalam-o-Alaikum. My question is that we can understand the custom agent by giving prompts to the general agent like we do in the spec kit.
+
+If we have made some files for the general agent and we have told the agent that whenever there is an input, you have to use these files and after that your output should come. And in those files, we give the instruction of our meaning. So this will be our custom agent.
+
+I want to repeat once again. I understood that you were saying that you had a general agent. You brought him and provided your file or requirement.
+
+And told him to make me a custom agent on their basis. No. Sir, my question is that I have understood that the way to make a custom agent is that we train our general agent through instruction so that it works according to our meaning according to a specific topic.
+
+Whenever we give input to it. So whenever the general agent works in the presence of those instructions then it will be our custom agent. No. 
+
+The concept is different. We are saying that we have a general agent. Let's take the example of Claude Court. 
+
+We all know that. Now I have Claude Court. And I have a company of finance or insurance.
+
+And they had a specific process that we want to make a custom FTE for this. Or AI employee who will automate this role. So now what I will do is that I have to design this FTE using my general agent.
+
+Now this is my requirement here. So I will not directly start making FTE or start writing its code. And this is also not possible that I go and give a prompt to the general agent and FTE comes out from here which fulfills their actual requirement.
+
+Now what will happen here for this is that I will take the process step by step. First of all, what do I need? Domain knowledge. How does it actually work? So I will acquire this domain knowledge using the general agent.
+
+Then I have to think what should I design for my custom agent. What should I design the agent's harness? What will be the relevant tools? How will the state work? How will the memory work? So now I am designing all these things using my general agent step by step. So at one time I understood the domain.
+
+Then I saw how the state or memory works. What are the job roles I have to make? Then what will be the design of all this? Then how do I stitch all this? So using the general agent, I am doing this work step by step. This is an incubation.
+
+And during this time, I have started designing my custom agent. And now I am slowly maturing it with me after each stage. So I used the general agent.
+
+And while using it, I made my custom FTE for a specific job role. So the general agent was not customized. While using it, I designed the FTE.
+
+Thank you. So we learned that Junaid, tell me one thing. Why do we need a custom agent? If we make a general agent and it is working, then why do we need a custom agent? Will you tell me first? Yes.
+
+When we are interacting with a general agent, it is not based on a specific niche. If you give it a use case, it will start working accordingly. Now in that, if we have a specific workflow or a specific task, it will work for the first time.
+
+But it will not be deterministic. Maybe it will work for the first time in a different way. Maybe it will work for the second time in a different way.
+
+So there can be different disadvantages. For example, we know that its behavior is not consistent. Secondly, its cost can also increase.
+
+So if we have a task that is repetitive, then it is best to go to a custom agent and define a proper workflow for it. This custom agent will provide a solution or automation for a particular problem. While a general agent can apply it to all kinds of tasks and use cases.
+
+Yes. I would like to add something. When we talk about a general agent, when I showed a demo, I said that I am making Junior Junaid.
+
+I have done a lot of things around the general agent to mature it. How to use specular development. When you have to plan a tweet, you will be doing this.
+
+When I start a session, memory will be injected. When you do a tool call, memory will come from here. I have done a lot of things around it to keep it relevant and specialize it in that role.
+
+If I talk about it, it is expensive. There is a non-deterministic. There is a chance of break.
+
+I don't have control of that point. The principle of AI for everyone is not being applied here. Where I need more determinism, I will go to a custom agent where I can control everything.
+
+Yes, sir. Now, I have a question. Yes, unmute.
+
+Sir, my question is that general agent and specialist these two are different or general agent will call specialist? Second question, it will be developed in the same framework or will be different and then there will be orchestration. When we are talking about general agent, tell me, is Claude Claude a general agent? Unmute. Sir, we can call him general.
+
+Is Claude's framework agent also a general agent? We can call him general. Can we call Gemini CLA a general agent? No, we can't. Can we call it a coding agent? Yes, sir.
+
+Can we call Google's framework agent a general agent? No, we can call it a specialist. When we are talking about general agent, we have a pre-built agent. It is not limited in one domain that I will only do coding or marketing.
+
+It does all our work. It does all the work. It is good to run locally but it can also break or make a mistake.
+
+When we are talking about a company and an AI employee has to be deployed that means he has replaced a human so he has to do better than a human on every side. He needs determinism, quality and everything else. It is not possible with Claude Claude.
+
+We are making a custom agent and it depends on the framework or the ecosystem Python or TypeScript is irrelevant. The concept is that we have to make an AI employee for a custom or specific job role. We are making the same thing in Hackathon 5. Any other questions? We have covered this.
+
+Let's see Hackathon 5. We have Hackathon 5 and two Hackathons for FTEs. Let's see Hackathon 0. It is a good introduction. Then we have Hackathon 5 for FTEs.
+
+Does anyone want to show their work? Ruhubhai has enraged. Yes, Ruhubhai. Assalamualaikum.
+
+Sir, my Hackathon 0 So, I have completed the platinium tier, so I want to show that. Absolutely. Sir, is the screen showing? Yes, it is.
+
+Sir, I have made a hackathon and made it as a sales lead. Like the problems of sales lead, what is the budget of the customers and what decisions they had to take, they can solve through this. Like this is the dashboard, here you can sign in, here you can qualify as a lead, there is a chatbot, it will ask you questions, it will ask you questions, according to the companies, what are the budgets of the companies, etc.
+
+So, it will lead to whether it is warm, hot or cold, like this. Like this, it will become a lead. Sir, I have implemented the invoices, UDO, which you asked for.
+
+Excellent. Sir, these payments, through these invoices, we can make payments from here. And, the weekly CO briefing, I have implemented that too.
+
+all the details will be shown here. All the details will be shown here. And, we can also send an email from here.
+
+And, we can also WhatsApp someone. And, the total summaries of this week, the payments, etc. will be shown here.
+
+Any questions? Okay. Sir, Okay. you have done everything by yourself.
+
+So, if we ask the agent, will he also manage everything by himself? No, sir. I have done it manually. I have done all the leads by myself.
+
+Okay. Have you thought about it? There was a requirement. We will tell him the task.
+
+Okay, this is the lead. For this, he will do everything by himself. He will send the email automatically.
+
+He has to send the email. Yes, sir. He is sending the email directly.
+
+He is also doing WhatsApp. Whenever he makes a lead, he sends an email here. He sends a welcome email.
+
+Okay. Ms. Vani, do you have a question? Yes. Tell me, which approach did you use for the integration of WhatsApp? Which approach did you use I didn't understand.
+
+As you were saying, messages will be sent or received on WhatsApp. What approach did you use What did you use? If you called an API, how did you do it? Can you tell us? I did it from here. For this, I made an MCP server.
+
+Okay. Sir, do you have any other question? I was saying that which API was the MCP server using? I mean, how is it getting the data from WhatsApp? Sir, I did all that. Now, I am a little confused.
+
+No problem. I don't understand how to explain. Okay, no problem.
+
+No problem. Inshallah, do it in the next class. Prepare for it.
+
+Sir, my hackathons are almost over. There is only 4 left. 50% is over.
+
+On Saturday, I will show Sir Qasim my 5th hackathon, Inshallah. Very good. Explain it to us on the next Wednesday.
+
+Okay. Thank you, sir. Thank you.
+
+Well done. Next. In the last meeting, I showed my project.
+
+I am showing its 2nd tier. This is my email inbox. In this, all the emails on my Gmail account are in this inbox.
+
+Like, all these emails are coming. All these are coming on my VS Code. And, this is my python watcher script.
+
+In this, all the new emails on my Gmail account are being watched by this watcher. It is watching the inbox. It takes permission to approve or reject Like, I approved an email.
+
+This email is saved in my text form. This email is from my meeting schedule. I got an email and I approved it.
+
+So, Claude automatically added this email in the completed task of meeting. And, Claude automatically sent the email from my Gmail account to the meeting confirmation email. So, Claude automatically sends the email after seeing the approved email from my Gmail account.
+
+He also updates the email in the dashboard.md file. Here, I show the new emails by fetching. This is Gmail fetcher script.
+
+Emails are fetched from here and come on my watcher script. My MCP server is not correct. This is my project.
+
+Claude is managing all my emails. Excellent. Excellent.
+
+Any questions? Thank you. Next. We will unmute.
+
+Assalamualaikum. Walaikumassalam. Screen sharing.
+
+Screen sharing is not available. Screen sharing is available. Screen sharing is available.
+
+(This file is longer than 30 minutes. Go Unlimited at TurboScribe.ai to transcribe files up to 10 hours long.)

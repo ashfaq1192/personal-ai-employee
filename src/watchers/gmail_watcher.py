@@ -37,13 +37,19 @@ def _load_known_contacts(vault_path: Path) -> set[str]:
 
 
 class GmailWatcher(BaseWatcher):
-    """Polls Gmail for unread important emails and emails from known contacts."""
+    """Polls Gmail for new emails using incremental history-based fetching.
+
+    Instead of re-scanning all unread emails every cycle, we track the Gmail
+    historyId and only fetch changes since the last check — much more efficient
+    and behaves like push notifications without requiring a public endpoint.
+    """
 
     def __init__(self, config: Config) -> None:
-        super().__init__(config, check_interval=120, watcher_name="gmail")
+        super().__init__(config, check_interval=30, watcher_name="gmail")  # 30s instead of 120s
         self._processed_ids: set[str] = set()
         self._service = None  # Lazy-loaded Gmail API service
         self._known_contacts: set[str] = _load_known_contacts(config.vault_path)
+        self._last_history_id: str | None = None  # tracks incremental position
 
     def _get_service(self):
         """Lazy-load Gmail API service."""
@@ -90,6 +96,14 @@ class GmailWatcher(BaseWatcher):
                 encoding="utf-8",
             )
 
+    def _get_start_history_id(self, service) -> str | None:
+        """Get the current historyId from the profile to begin incremental tracking."""
+        try:
+            profile = service.users().getProfile(userId="me").execute()
+            return profile.get("historyId")
+        except Exception:
+            return None
+
     def check_for_updates(self) -> list[Any]:
         if self.config.dev_mode:
             log.debug("DEV_MODE: skipping Gmail check")
@@ -100,62 +114,101 @@ class GmailWatcher(BaseWatcher):
             return []
 
         try:
-            # Query important unread emails
-            results = (
-                service.users()
-                .messages()
-                .list(
-                    userId="me",
-                    q="is:unread is:important",
-                    maxResults=20,
-                )
-                .execute()
-            )
-            messages = results.get("messages", [])
+            # On first run, seed the history cursor and fall back to full scan
+            if self._last_history_id is None:
+                self._last_history_id = self._get_start_history_id(service)
+                log.info("Gmail watcher seeded at historyId=%s — running initial full scan", self._last_history_id)
+                return self._full_scan(service)
 
-            # Also query known contacts (unread)
-            for contact in self._known_contacts:
-                contact_results = (
-                    service.users()
-                    .messages()
-                    .list(
-                        userId="me",
-                        q=f"is:unread from:{contact}",
-                        maxResults=10,
-                    )
-                    .execute()
-                )
-                messages.extend(contact_results.get("messages", []))
+            # Incremental: only messages added since last historyId
+            return self._incremental_scan(service)
 
-            # Deduplicate
-            seen_ids: set[str] = set()
-            unique: list[dict] = []
-            for msg in messages:
-                msg_id = msg["id"]
-                if msg_id not in seen_ids and msg_id not in self._processed_ids:
-                    seen_ids.add(msg_id)
-                    unique.append(msg)
-
-            # Fetch full message details
-            items = []
-            for msg in unique:
-                try:
-                    full = (
-                        service.users()
-                        .messages()
-                        .get(userId="me", id=msg["id"], format="metadata")
-                        .execute()
-                    )
-                    items.append(full)
-                except Exception:
-                    log.exception("Failed to fetch message %s", msg["id"])
-
-            return items
         except Exception as exc:
             if "401" in str(exc):
                 self._create_alert("auth_expired", "Gmail credentials expired")
             log.exception("Gmail check_for_updates failed")
             return []
+
+    def _incremental_scan(self, service) -> list[Any]:
+        """Fetch only messages added since _last_history_id (efficient, push-like)."""
+        try:
+            history_result = (
+                service.users()
+                .history()
+                .list(
+                    userId="me",
+                    startHistoryId=self._last_history_id,
+                    historyTypes=["messageAdded"],
+                    labelId="INBOX",
+                )
+                .execute()
+            )
+        except Exception as exc:
+            # historyId too old or invalid — reset to full scan immediately
+            if "404" in str(exc) or "invalid" in str(exc).lower():
+                log.warning("History cursor expired — resetting and running full scan now")
+                self._last_history_id = self._get_start_history_id(service)
+                return self._full_scan(service)
+            raise
+
+        # Advance cursor
+        new_history_id = history_result.get("historyId")
+        if new_history_id:
+            self._last_history_id = new_history_id
+
+        # Collect new message IDs
+        message_ids: list[str] = []
+        for record in history_result.get("history", []):
+            for added in record.get("messagesAdded", []):
+                msg_id = added.get("message", {}).get("id")
+                if msg_id and msg_id not in self._processed_ids:
+                    message_ids.append(msg_id)
+
+        if not message_ids:
+            return []
+
+        log.info("Gmail incremental scan: %d new message(s)", len(message_ids))
+        return self._fetch_messages(service, message_ids)
+
+    def _full_scan(self, service) -> list[Any]:
+        """Fallback full scan used only on first run."""
+        results = (
+            service.users()
+            .messages()
+            .list(userId="me", q="is:unread is:important", maxResults=20)
+            .execute()
+        )
+        messages = results.get("messages", [])
+
+        for contact in self._known_contacts:
+            contact_results = (
+                service.users()
+                .messages()
+                .list(userId="me", q=f"is:unread from:{contact}", maxResults=10)
+                .execute()
+            )
+            messages.extend(contact_results.get("messages", []))
+
+        unique_ids = list({
+            m["id"] for m in messages if m["id"] not in self._processed_ids
+        })
+        return self._fetch_messages(service, unique_ids)
+
+    def _fetch_messages(self, service, message_ids: list[str]) -> list[Any]:
+        """Fetch full metadata for a list of message IDs."""
+        items = []
+        for msg_id in message_ids:
+            try:
+                full = (
+                    service.users()
+                    .messages()
+                    .get(userId="me", id=msg_id, format="metadata")
+                    .execute()
+                )
+                items.append(full)
+            except Exception:
+                log.exception("Failed to fetch message %s", msg_id)
+        return items
 
     def create_action_file(self, item: Any) -> Path:
         msg_id = item["id"]
@@ -203,7 +256,81 @@ class GmailWatcher(BaseWatcher):
         )
         md_path.write_text(md_content, encoding="utf-8")
         self._processed_ids.add(msg_id)
+
+        # Record in contact memory for personalization
+        try:
+            from src.orchestrator.contact_memory import ContactMemory
+            mem = ContactMemory(self.config.vault_path)
+            name_match = re.match(r"([^<]+?)\s*<", sender)
+            full_name = name_match.group(1).strip() if name_match else ""
+            mem.note_interaction(
+                email=sender_email or sender,
+                full_name=full_name,
+                interaction_type="email_received",
+                summary=f"Subject: {subject} | {snippet[:120]}",
+            )
+        except Exception:
+            log.debug("Contact memory update failed (non-fatal)", exc_info=True)
+
+        # Tag the email in Gmail so the inbox is self-organizing
+        try:
+            from src.mcp_servers.gmail_service import GmailService
+            svc = GmailService(self.config.gmail_credentials_path)
+            svc.apply_label(msg_id, "AI/processed")
+            if priority == "high":
+                svc.apply_label(msg_id, "AI/high-priority")
+
+            # Check for PDF attachments and append extracted content
+            from src.watchers.pdf_processor import PdfProcessor
+            processor = PdfProcessor(gmail_service=svc)
+            pdf_results = processor.process_email_attachments(msg_id, md_path)
+            if pdf_results:
+                svc.apply_label(msg_id, "AI/has-attachment")
+                log.info(
+                    "Processed %d PDF attachment(s) for %s",
+                    len(pdf_results), md_path.name,
+                )
+
+            # Auto-draft a reply so the user has a starting point in Gmail
+            if not self.config.dev_mode:
+                self._create_auto_draft(svc, msg_id, sender, subject, md_path)
+        except Exception:
+            log.debug("Could not apply Gmail label or process attachments (non-fatal)", exc_info=True)
+
         return md_path
+
+
+    def _create_auto_draft(
+        self,
+        svc,
+        msg_id: str,
+        sender: str,
+        subject: str,
+        md_path,
+    ) -> None:
+        """Create a Gmail Draft reply for an inbound email and tag it."""
+        try:
+            # Extract first name from "Full Name <email>" or bare email
+            name_match = re.match(r"([^<]+?)\s*<", sender)
+            first_name = name_match.group(1).strip().split()[0] if name_match else "there"
+
+            draft_body = (
+                f"Hi {first_name},\n\n"
+                f"Thank you for your email. I've received your message and will get back to you shortly.\n\n"
+                f"Best regards"
+            )
+            reply_subject = subject if subject.lower().startswith("re:") else f"Re: {subject}"
+
+            svc.draft_email(to=sender, subject=reply_subject, body=draft_body)
+            svc.apply_label(msg_id, "AI/drafted")
+
+            # Note the draft in the action file
+            note = "\n> **Auto-draft created** — a reply draft is waiting in your Gmail Drafts folder.\n"
+            existing = md_path.read_text(encoding="utf-8")
+            md_path.write_text(existing + note, encoding="utf-8")
+            log.info("Auto-draft created for %s", md_path.name)
+        except Exception:
+            log.debug("Auto-draft creation failed (non-fatal)", exc_info=True)
 
 
 if __name__ == "__main__":

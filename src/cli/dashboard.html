@@ -40,6 +40,8 @@ tailwind.config = {
   .badge { font-size:0.65rem; min-width:1.2rem; height:1.2rem; line-height:1.2rem; }
   .approval-card { background:#111827; border:1px solid #1e3a5f; }
   .approval-card:hover { border-color:#3b82f6; }
+  @keyframes pulse-dot { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(1.4); } }
+  .heartbeat { animation: pulse-dot 2s ease-in-out infinite; }
 </style>
 </head>
 <body class="text-slate-200 font-sans text-sm">
@@ -53,6 +55,7 @@ tailwind.config = {
   <span id="mode-badge" class="text-xs px-2 py-0.5 rounded font-mono bg-slate-700 text-slate-300">—</span>
   <span class="flex-1"></span>
   <div id="proc-list" class="flex gap-2 text-xs text-slate-400"></div>
+  <span id="heartbeat-dot" class="heartbeat w-2 h-2 rounded-full bg-emerald-500" title="Live"></span>
   <button onclick="fullRefresh()" class="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-700 transition" title="Refresh">↻</button>
 </header>
 
@@ -81,6 +84,12 @@ tailwind.config = {
       </button>
       <button class="sidebar-item flex items-center gap-2 px-4 py-2.5 text-left" data-tab="briefing">
         <span>📊</span><span>Briefing</span>
+      </button>
+      <button class="sidebar-item flex items-center gap-2 px-4 py-2.5 text-left" data-tab="calendar">
+        <span>📅</span><span>Calendar</span>
+      </button>
+      <button class="sidebar-item flex items-center gap-2 px-4 py-2.5 text-left" data-tab="leads">
+        <span>🎯</span><span>Leads</span>
       </button>
     </div>
     <!-- WhatsApp Status -->
@@ -295,6 +304,89 @@ tailwind.config = {
       </div>
     </div>
 
+    <!-- ── CALENDAR TAB ──────────────────────────────────── -->
+    <div id="tab-calendar" class="tab-content flex-1 flex flex-col hidden overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-700 flex items-center gap-3">
+        <h1 class="font-semibold text-base text-white">Calendar</h1>
+        <span class="flex-1"></span>
+        <button onclick="loadCalendar()" id="btn-refresh-cal"
+          class="text-xs bg-blue-700 hover:bg-blue-600 text-white px-3 py-1 rounded transition">Refresh</button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 flex gap-4">
+        <!-- Today -->
+        <div class="flex-1">
+          <h2 class="text-xs font-semibold text-slate-400 uppercase mb-3">Today</h2>
+          <div id="cal-today" class="flex flex-col gap-2">
+            <p class="text-slate-500 text-xs text-center py-6">Loading…</p>
+          </div>
+        </div>
+        <!-- Upcoming -->
+        <div class="flex-1">
+          <h2 class="text-xs font-semibold text-slate-400 uppercase mb-3">Upcoming (next 10)</h2>
+          <div id="cal-upcoming" class="flex flex-col gap-2">
+            <p class="text-slate-500 text-xs text-center py-6">Loading…</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Lead Qualification ─────────────────────────────────────────── -->
+    <div id="tab-leads" class="tab-content flex-1 flex flex-col hidden overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-700 flex items-center gap-3">
+        <h1 class="font-semibold text-base text-white">Lead Qualification</h1>
+        <span class="flex-1"></span>
+        <button onclick="loadLeads()" class="text-xs bg-blue-700 hover:bg-blue-600 text-white px-3 py-1 rounded transition">Refresh Leads</button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 flex gap-4">
+        <!-- Qualify form -->
+        <div class="w-80 flex-shrink-0">
+          <h2 class="text-xs font-semibold text-slate-400 uppercase mb-3">Qualify a Lead</h2>
+          <div class="bg-slate-800 rounded-lg p-4 flex flex-col gap-2 text-xs">
+            <input id="lq-name" placeholder="Contact name *" class="bg-slate-700 text-white rounded px-2 py-1.5 text-xs outline-none border border-transparent focus:border-blue-500" />
+            <input id="lq-company" placeholder="Company *" class="bg-slate-700 text-white rounded px-2 py-1.5 text-xs outline-none border border-transparent focus:border-blue-500" />
+            <input id="lq-email" placeholder="Email *" class="bg-slate-700 text-white rounded px-2 py-1.5 text-xs outline-none border border-transparent focus:border-blue-500" />
+            <input id="lq-phone" placeholder="Phone" class="bg-slate-700 text-white rounded px-2 py-1.5 text-xs outline-none border border-transparent focus:border-blue-500" />
+            <select id="lq-budget" class="bg-slate-700 text-white rounded px-2 py-1.5 text-xs outline-none border border-transparent focus:border-blue-500">
+              <option value="">Budget range…</option>
+              <option>Under $1,000</option>
+              <option>$1,000 – $5,000</option>
+              <option>$5,000 – $20,000</option>
+              <option>$20,000 – $100,000</option>
+              <option>Over $100,000</option>
+            </select>
+            <select id="lq-authority" class="bg-slate-700 text-white rounded px-2 py-1.5 text-xs outline-none border border-transparent focus:border-blue-500">
+              <option value="">Decision authority…</option>
+              <option>Final decision maker</option>
+              <option>Key influencer</option>
+              <option>Evaluator only</option>
+            </select>
+            <textarea id="lq-need" rows="2" placeholder="What is their need / pain point?" class="bg-slate-700 text-white rounded px-2 py-1.5 text-xs outline-none border border-transparent focus:border-blue-500 resize-none"></textarea>
+            <select id="lq-timeline" class="bg-slate-700 text-white rounded px-2 py-1.5 text-xs outline-none border border-transparent focus:border-blue-500">
+              <option value="">Purchase timeline…</option>
+              <option>Immediately</option>
+              <option>Within 1 month</option>
+              <option>1 – 3 months</option>
+              <option>3 – 6 months</option>
+              <option>Over 6 months / exploring</option>
+            </select>
+            <button onclick="qualifyLead()" id="btn-qualify"
+              class="mt-1 bg-green-700 hover:bg-green-600 text-white py-1.5 rounded font-semibold transition text-xs">
+              Qualify Lead
+            </button>
+            <!-- Result panel -->
+            <div id="lq-result" class="hidden mt-2 p-3 rounded-lg text-xs"></div>
+          </div>
+        </div>
+        <!-- Recent leads list -->
+        <div class="flex-1">
+          <h2 class="text-xs font-semibold text-slate-400 uppercase mb-3">Recent Leads</h2>
+          <div id="leads-list" class="flex flex-col gap-2">
+            <p class="text-slate-500 text-xs text-center py-6">Loading…</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -409,8 +501,11 @@ async function loadStatus() {
         <span class="w-2 h-2 rounded-full ${status === 'online' ? 'bg-green-500' : 'bg-red-500'}"></span>
         <span class="truncate max-w-24">${name}</span>
       </span>`
-    ).join('') || '<span class="text-slate-600">No PM2 processes</span>';
-  } catch (e) {}
+    ).join('') || '<span class="text-slate-600">No processes</span>';
+    document.getElementById('heartbeat-dot').className = 'heartbeat w-2 h-2 rounded-full bg-emerald-500';
+  } catch (e) {
+    document.getElementById('heartbeat-dot').className = 'w-2 h-2 rounded-full bg-red-500';
+  }
 }
 
 function setBadge(id, n) {
@@ -800,6 +895,41 @@ async function generateBriefing() {
   }
 }
 
+// ─── CALENDAR ──────────────────────────────────────────────────────
+function _fmtEvent(e) {
+  if (e.error) return `<div class="bg-red-900/30 rounded p-2 text-xs text-red-400">${escHtml(e.error)}</div>`;
+  const start = e.start ? new Date(e.start).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+  const end   = e.end   ? new Date(e.end).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+  const time  = (start && end) ? `${start} – ${end}` : (start || '');
+  return `<div class="bg-slate-800 rounded p-3 text-xs">
+    <div class="font-semibold text-white mb-1">${escHtml(e.summary || '(No title)')}</div>
+    ${time ? `<div class="text-blue-400">${time}</div>` : ''}
+    ${e.location ? `<div class="text-slate-400 truncate">${escHtml(e.location)}</div>` : ''}
+    ${e.description ? `<div class="text-slate-500 mt-1 line-clamp-2">${escHtml(e.description.slice(0,120))}</div>` : ''}
+  </div>`;
+}
+
+async function loadCalendar() {
+  document.getElementById('cal-today').innerHTML    = '<p class="text-slate-500 text-xs text-center py-6">Loading…</p>';
+  document.getElementById('cal-upcoming').innerHTML = '<p class="text-slate-500 text-xs text-center py-6">Loading…</p>';
+  const [today, upcoming] = await Promise.all([
+    get('/api/calendar/today'),
+    get('/api/calendar/upcoming'),
+  ]);
+  const todayEl    = document.getElementById('cal-today');
+  const upcomingEl = document.getElementById('cal-upcoming');
+  if (!today || !today.length) {
+    todayEl.innerHTML = '<p class="text-slate-500 text-xs text-center py-6">No events today</p>';
+  } else {
+    todayEl.innerHTML = today.map(_fmtEvent).join('');
+  }
+  if (!upcoming || !upcoming.length) {
+    upcomingEl.innerHTML = '<p class="text-slate-500 text-xs text-center py-6">No upcoming events</p>';
+  } else {
+    upcomingEl.innerHTML = upcoming.map(_fmtEvent).join('');
+  }
+}
+
 // ─── Refresh logic ─────────────────────────────────────────────────
 function refreshActiveTab() {
   const tab = state.activeTab;
@@ -807,6 +937,8 @@ function refreshActiveTab() {
   else if (tab === 'approvals') loadApprovals();
   else if (tab === 'audit') loadAudit();
   else if (tab === 'briefing') loadBriefings();
+  else if (tab === 'calendar') loadCalendar();
+  else if (tab === 'leads') loadLeads();
 }
 
 async function fullRefresh() {
@@ -829,6 +961,88 @@ function escHtml(s) {
   setInterval(loadWAStatus, 30_000);
   setInterval(refreshActiveTab, 15_000);
 })();
+
+// ─── Lead Qualification ─────────────────────────────────────────────
+const TIER_COLORS = {
+  hot:  { bg: 'bg-red-900/50',    badge: 'bg-red-700',    label: 'HOT' },
+  warm: { bg: 'bg-yellow-900/50', badge: 'bg-yellow-600', label: 'WARM' },
+  cold: { bg: 'bg-slate-700/50',  badge: 'bg-slate-500',  label: 'COLD' },
+};
+
+async function loadLeads() {
+  const box = document.getElementById('leads-list');
+  try {
+    const leads = await fetch('/api/leads').then(r => r.json());
+    if (!leads.length) {
+      box.innerHTML = '<p class="text-slate-500 text-xs text-center py-6">No qualified leads yet.</p>';
+      return;
+    }
+    box.innerHTML = leads.map(l => {
+      const tier = (l.tier || 'cold').toLowerCase();
+      const c = TIER_COLORS[tier] || TIER_COLORS.cold;
+      return `<div class="rounded-lg p-3 ${c.bg} border border-slate-600 text-xs">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="px-1.5 py-0.5 rounded text-white text-[10px] font-bold ${c.badge}">${c.label}</span>
+          <span class="font-semibold text-white">${escHtml(l.name)}</span>
+          <span class="text-slate-400">${escHtml(l.company)}</span>
+          <span class="ml-auto text-slate-400">${escHtml(l.score || '')} pts</span>
+        </div>
+        <div class="text-slate-400">${escHtml(l.email)}</div>
+        <div class="text-slate-500 mt-0.5">${escHtml(l.qualified_at || '').slice(0,16).replace('T',' ')}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    box.innerHTML = `<p class="text-red-400 text-xs text-center py-6">${escHtml(e.message)}</p>`;
+  }
+}
+
+async function qualifyLead() {
+  const btn = document.getElementById('btn-qualify');
+  const resultEl = document.getElementById('lq-result');
+  const payload = {
+    name:      document.getElementById('lq-name').value.trim(),
+    company:   document.getElementById('lq-company').value.trim(),
+    email:     document.getElementById('lq-email').value.trim(),
+    phone:     document.getElementById('lq-phone').value.trim(),
+    budget:    document.getElementById('lq-budget').value,
+    authority: document.getElementById('lq-authority').value,
+    need:      document.getElementById('lq-need').value.trim(),
+    timeline:  document.getElementById('lq-timeline').value,
+  };
+  if (!payload.name || !payload.company || !payload.email) {
+    toast('Name, company, and email are required', 'error'); return;
+  }
+  btn.disabled = true; btn.textContent = 'Qualifying…';
+  resultEl.className = 'hidden';
+  try {
+    const res = await fetch('/api/lead/qualify', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    }).then(r => r.json());
+
+    if (res.status === 'error') {
+      toast(res.message || 'Error qualifying lead', 'error');
+    } else {
+      const tier = (res.tier || 'cold').toLowerCase();
+      const c = TIER_COLORS[tier] || TIER_COLORS.cold;
+      resultEl.className = `mt-2 p-3 rounded-lg text-xs ${c.bg} border border-slate-600`;
+      resultEl.innerHTML = `
+        <div class="flex items-center gap-2 mb-2">
+          <span class="px-2 py-0.5 rounded text-white text-[10px] font-bold ${c.badge}">${tier.toUpperCase()}</span>
+          <span class="font-semibold text-white">Score: ${escHtml(String(res.score ?? ''))}</span>
+        </div>
+        <div class="text-slate-300">${escHtml(res.summary || res.reason || '')}</div>
+        ${res.next_action ? `<div class="mt-1 text-slate-400">Next: ${escHtml(res.next_action)}</div>` : ''}
+      `;
+      toast(`Lead qualified — ${tier.toUpperCase()} (${res.score} pts)`, 'ok');
+      loadLeads();
+    }
+  } catch(e) {
+    toast('Failed to qualify lead: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Qualify Lead';
+  }
+}
 </script>
 </body>
 </html>
