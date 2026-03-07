@@ -195,20 +195,44 @@ class GmailWatcher(BaseWatcher):
         return self._fetch_messages(service, unique_ids)
 
     def _fetch_messages(self, service, message_ids: list[str]) -> list[Any]:
-        """Fetch full metadata for a list of message IDs."""
+        """Fetch full message payload (headers + body) for a list of message IDs."""
         items = []
         for msg_id in message_ids:
             try:
                 full = (
                     service.users()
                     .messages()
-                    .get(userId="me", id=msg_id, format="metadata")
+                    .get(userId="me", id=msg_id, format="full")
                     .execute()
                 )
                 items.append(full)
             except Exception:
                 log.exception("Failed to fetch message %s", msg_id)
         return items
+
+    @staticmethod
+    def _extract_body(payload: dict) -> str:
+        """Recursively extract plain-text body from a Gmail message payload."""
+        mime_type = payload.get("mimeType", "")
+        body_data = payload.get("body", {}).get("data", "")
+
+        if mime_type == "text/plain" and body_data:
+            return base64.urlsafe_b64decode(body_data + "==").decode("utf-8", errors="replace")
+
+        for part in payload.get("parts", []):
+            text = GmailWatcher._extract_body(part)
+            if text:
+                return text
+
+        # Fallback: try text/html parts if no plain text found
+        for part in payload.get("parts", []):
+            if part.get("mimeType") == "text/html":
+                data = part.get("body", {}).get("data", "")
+                if data:
+                    html = base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="replace")
+                    # Strip tags crudely — just remove angle-bracket content
+                    return re.sub(r"<[^>]+>", " ", html).strip()
+        return ""
 
     def create_action_file(self, item: Any) -> Path:
         msg_id = item["id"]
@@ -233,7 +257,11 @@ class GmailWatcher(BaseWatcher):
             self._processed_ids.add(msg_id)
             return md_path
 
-        snippet = item.get("snippet", "")
+        # Extract full body text (falls back to snippet if empty)
+        body_text = self._extract_body(item.get("payload", {})).strip()
+        if not body_text:
+            body_text = item.get("snippet", "")
+
         md_content = (
             f"---\n"
             f"type: email\n"
@@ -249,7 +277,7 @@ class GmailWatcher(BaseWatcher):
             f"**From**: {sender}\n"
             f"**Subject**: {subject}\n"
             f"**Date**: {date_str}\n\n"
-            f"{snippet}\n\n"
+            f"{body_text}\n\n"
             f"## Suggested Actions\n"
             f"- [ ] Read and classify email\n"
             f"- [ ] Determine response action\n"
