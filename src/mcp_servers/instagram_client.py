@@ -30,7 +30,7 @@ class InstagramClient:
     def _get_page_token(self) -> str:
         """Exchange user token for a Page Access Token (cached)."""
         if self._page_token is None:
-            with httpx.Client() as client:
+            with httpx.Client(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
                 resp = client.get(
                     f"{GRAPH_API_BASE}/{self._page_id}",
                     params={"fields": "access_token", "access_token": self._user_token},
@@ -56,7 +56,7 @@ class InstagramClient:
         except Exception:
             log.warning("Page token exchange failed — using user token directly")
             page_token = self._user_token
-        with httpx.Client() as client:
+        with httpx.Client(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
             # Step 1: Create media container
             resp = client.post(
                 f"{GRAPH_API_BASE}/{ig_user_id}/media",
