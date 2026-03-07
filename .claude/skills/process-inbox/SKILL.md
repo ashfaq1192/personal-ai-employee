@@ -84,6 +84,11 @@ Move this file to /Approved/ folder.
 Move this file to /Rejected/ folder.
 ```
 
+**IMPORTANT — YAML quoting**: Any field value containing `:` (colons), `<`, `>`, `#`, or `@` MUST be wrapped in double quotes. Common fields that need quoting:
+- `subject: "Re: Original subject"` (colon after Re)
+- `recipient: "Full Name <email@example.com>"` (angle brackets)
+- `reason: "AI response to: subject"` (colon in reason)
+
 Use Python to get the current timestamp:
 ```python
 from datetime import datetime, timedelta, timezone
@@ -127,9 +132,9 @@ priority: low
 Output (`Pending_Approval/APPROVAL_email_send_20260307_120000.md`):
 ```yaml
 action: email_send
-recipient: Ashfaq Ahmad <ashfaq.ahmad62@gmail.com>
+recipient: "Ashfaq Ahmad <ashfaq.ahmad62@gmail.com>"
 to: ashfaq.ahmad62@gmail.com
-subject: Re: Release my payment urgently
+subject: "Re: Release my payment urgently"
 ```
 
 ```

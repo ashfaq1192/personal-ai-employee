@@ -111,15 +111,21 @@ class ApprovalManager:
             path = self.pending_dir / filename
             counter += 1
 
+        def _yaml_str(v: str) -> str:
+            """Quote YAML string values that contain special chars."""
+            if any(c in v for c in (":", "#", "[", "]", "{", "}", ",")):
+                return f'"{v}"'
+            return v
+
         content = (
             f"---\n"
             f"type: approval_request\n"
             f"action: {action}\n"
             f"id: {path.stem}\n"
             f"amount: {amount}\n"
-            f"recipient: {recipient}\n"
-            f"reason: {reason}\n"
-            f"plan_ref: {plan_ref}\n"
+            f"recipient: {_yaml_str(recipient)}\n"
+            f"reason: {_yaml_str(reason)}\n"
+            f"plan_ref: {_yaml_str(plan_ref)}\n"
             f"created: {now.isoformat()}\n"
             f"expires: {expires.isoformat()}\n"
             f"status: pending\n"
